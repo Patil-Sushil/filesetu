@@ -465,7 +465,7 @@
 }
 
 /* ========================================
-   ADD/EDIT USER MODAL
+   ADD/EDIT USER MODAL - FIXED STRUCTURE
    ======================================== */
 
 .modal-backdrop {
@@ -478,6 +478,7 @@
   justify-content: center;
   z-index: 1000;
   padding: 1rem;
+  overflow-y: auto;
 }
 
 .modal-content {
@@ -487,7 +488,10 @@
   max-width: 550px;
   width: 100%;
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: auto;
 }
 
 .modal-header {
@@ -496,6 +500,11 @@
   align-items: flex-start;
   padding: 1.5rem;
   border-bottom: 2px solid #e2e8f0;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
 }
 
 .modal-header h3 {
@@ -522,6 +531,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .btn-close:hover {
@@ -535,6 +545,319 @@
   transform: none;
 }
 
+/* ========================================
+   FORM STRUCTURE - CRITICAL FOR SCROLLING
+   ======================================== */
+
+.modal-content form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.modal-form-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group input:disabled,
+.form-group select:disabled {
+  background: #f7fafc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-group input.error,
+.form-group select.error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+/* ========================================
+   VALIDATION MESSAGES
+   ======================================== */
+
+.error-message,
+.success-message,
+.info-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+.error-message {
+  color: #ef4444;
+}
+
+.success-message {
+  color: #10b981;
+}
+
+.info-message {
+  color: #6b7280;
+}
+
+/* ========================================
+   PASSWORD INPUT
+   ======================================== */
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  padding-right: 45px;
+  width: 100%;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+  z-index: 2;
+}
+
+.password-toggle:hover {
+  color: #667eea;
+}
+
+/* Password Strength Indicator */
+.password-strength {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strength-bar-container {
+  width: 100%;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.strength-bar {
+  height: 100%;
+  transition: all 0.3s ease;
+  border-radius: 3px;
+}
+
+.strength-bar.strength-weak {
+  width: 33.33%;
+}
+
+.strength-bar.strength-medium {
+  width: 66.66%;
+}
+
+.strength-bar.strength-strong {
+  width: 100%;
+}
+
+/* ========================================
+   MODAL FOOTER - STICKY AT BOTTOM
+   ======================================== */
+
+.modal-footer {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-top: 2px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+.btn-cancel,
+.btn-submit {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+
+.btn-cancel {
+  background: #edf2f7;
+  color: #2d3748;
+  border: 2px solid #cbd5e1;
+}
+
+.btn-cancel:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-submit {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ========================================
+   SCROLLBAR STYLING FOR MODAL
+   ======================================== */
+
+.modal-form-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-form-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.modal-form-content::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 10px;
+}
+
+.modal-form-content::-webkit-scrollbar-thumb:hover {
+  background: #5568d3;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+  .modal-content {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+
+  .modal-header {
+    padding: 1.25rem;
+  }
+
+  .modal-form-content {
+    padding: 1.25rem;
+  }
+
+  .modal-footer {
+    padding: 1.25rem;
+    flex-direction: column;
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    max-width: 98vw;
+    max-height: 98vh;
+    margin: 0.5rem;
+    border-radius: 16px;
+  }
+
+  .modal-header {
+    padding: 1rem;
+  }
+
+  .modal-header h3 {
+    font-size: 1.25rem;
+  }
+
+  .modal-form-content {
+    padding: 1rem;
+  }
+
+  .modal-footer {
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    padding: 0.65rem 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-group input,
+  .form-group select {
+    font-size: 16px; /* Prevents zoom on mobile */
+  }
+}
 /* ========================================
    FORM STYLES
    ======================================== */

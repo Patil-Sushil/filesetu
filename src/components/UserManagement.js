@@ -693,7 +693,7 @@ const UserManagement = ({ showToast }) => {
         currentUserId={currentUser?.uid}
       />
 
-      {/* Add/Edit User Modal */}
+      {/* Add/Edit User Modal with FIXED STRUCTURE */}
       <AnimatePresence>
         {showAddModal && (
           <motion.div
@@ -715,6 +715,7 @@ const UserManagement = ({ showToast }) => {
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
             >
+              {/* HEADER - Sticky at top */}
               <div className="modal-header">
                 <div>
                   <h3>{editingUser ? "✏️ Edit User" : "➕ Add New User"}</h3>
@@ -738,197 +739,207 @@ const UserManagement = ({ showToast }) => {
                 </button>
               </div>
 
+              {/* FORM - Wrapped properly */}
               <form onSubmit={editingUser ? handleUpdateUser : handleAddUser}>
-                {/* Name Field */}
-                <div className="form-group">
-                  <label htmlFor="name">
-                    <User size={16} />
-                    Full Name *
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="e.g., John Doe"
-                    disabled={isSubmitting}
-                    className={formErrors.name ? "error" : ""}
-                    maxLength="50"
-                  />
-                  {formErrors.name && (
-                    <span className="error-message">
-                      <AlertTriangle size={14} />
-                      {formErrors.name}
-                    </span>
-                  )}
-                  {!formErrors.name && formData.name && (
-                    <span className="success-message">
-                      <CheckCircle2 size={14} />
-                      Looks good!
-                    </span>
-                  )}
-                </div>
-
-                {/* Email Field */}
-                <div className="form-group">
-                  <label htmlFor="email">
-                    <Mail size={16} />
-                    Email Address *
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="e.g., john@example.com"
-                    disabled={!!editingUser || isSubmitting}
-                    className={formErrors.email ? "error" : ""}
-                  />
-                  {formErrors.email && (
-                    <span className="error-message">
-                      <AlertTriangle size={14} />
-                      {formErrors.email}
-                    </span>
-                  )}
-                  {!formErrors.email && formData.email && !editingUser && (
-                    <span className="success-message">
-                      <CheckCircle2 size={14} />
-                      Valid email format
-                    </span>
-                  )}
-                  {editingUser && (
-                    <span className="info-message">
-                      ℹ️ Email cannot be changed after creation
-                    </span>
-                  )}
-                </div>
-
-                {/* Mobile Field */}
-                <div className="form-group">
-                  <label htmlFor="mobile">
-                    <Phone size={16} />
-                    Mobile Number *
-                  </label>
-                  <input
-                    id="mobile"
-                    type="tel"
-                    name="mobile"
-                    value={formData.mobile}
-                    onChange={handleChange}
-                    placeholder="e.g., 9876543210"
-                    maxLength="10"
-                    disabled={isSubmitting}
-                    className={formErrors.mobile ? "error" : ""}
-                  />
-                  {formErrors.mobile && (
-                    <span className="error-message">
-                      <AlertTriangle size={14} />
-                      {formErrors.mobile}
-                    </span>
-                  )}
-                  {!formErrors.mobile && formData.mobile.length === 10 && (
-                    <span className="success-message">
-                      <CheckCircle2 size={14} />
-                      Valid mobile number
-                    </span>
-                  )}
-                  {formData.mobile.length > 0 &&
-                    formData.mobile.length < 10 &&
-                    !formErrors.mobile && (
-                      <span className="info-message">
-                        {10 - formData.mobile.length} more digit
-                        {10 - formData.mobile.length !== 1 ? "s" : ""} required
-                      </span>
-                    )}
-                </div>
-
-                {/* Password Field */}
-                {!editingUser && (
+                {/* SCROLLABLE CONTENT AREA */}
+                <div className="modal-form-content">
+                  {/* Name Field */}
                   <div className="form-group">
-                    <label htmlFor="password">🔒 Password *</label>
-                    <div className="password-input-wrapper">
-                      <input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        placeholder="Min 6 characters"
-                        minLength="6"
-                        maxLength="50"
-                        disabled={isSubmitting}
-                        className={formErrors.password ? "error" : ""}
-                      />
-                      <button
-                        type="button"
-                        className="password-toggle"
-                        onClick={() => setShowPassword(!showPassword)}
-                        tabIndex="-1"
-                      >
-                        {showPassword ? (
-                          <EyeOff size={18} />
-                        ) : (
-                          <Eye size={18} />
-                        )}
-                      </button>
-                    </div>
-                    {formErrors.password && (
+                    <label htmlFor="name">
+                      <User size={16} />
+                      Full Name *
+                    </label>
+                    <input
+                      id="name"
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="e.g., John Doe"
+                      disabled={isSubmitting}
+                      className={formErrors.name ? "error" : ""}
+                      maxLength="50"
+                    />
+                    {formErrors.name && (
                       <span className="error-message">
                         <AlertTriangle size={14} />
-                        {formErrors.password}
+                        {formErrors.name}
                       </span>
                     )}
-                    {passwordStrength.level && !formErrors.password && (
-                      <div className="password-strength">
-                        <div className="strength-bar-container">
-                          <div
-                            className={`strength-bar strength-${passwordStrength.level}`}
-                            style={{ backgroundColor: passwordStrength.color }}
-                          ></div>
-                        </div>
-                        <span
-                          style={{
-                            color: passwordStrength.color,
-                            fontSize: "0.85rem",
-                            fontWeight: "600",
-                          }}
-                        >
-                          {passwordStrength.text} password
-                        </span>
-                      </div>
+                    {!formErrors.name && formData.name && (
+                      <span className="success-message">
+                        <CheckCircle2 size={14} />
+                        Looks good!
+                      </span>
                     )}
-                    <span className="info-message" style={{ marginTop: "4px" }}>
-                      💡 Use 8+ characters with uppercase, numbers & symbols
+                  </div>
+
+                  {/* Email Field */}
+                  <div className="form-group">
+                    <label htmlFor="email">
+                      <Mail size={16} />
+                      Email Address *
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="e.g., john@example.com"
+                      disabled={!!editingUser || isSubmitting}
+                      className={formErrors.email ? "error" : ""}
+                    />
+                    {formErrors.email && (
+                      <span className="error-message">
+                        <AlertTriangle size={14} />
+                        {formErrors.email}
+                      </span>
+                    )}
+                    {!formErrors.email && formData.email && !editingUser && (
+                      <span className="success-message">
+                        <CheckCircle2 size={14} />
+                        Valid email format
+                      </span>
+                    )}
+                    {editingUser && (
+                      <span className="info-message">
+                        ℹ️ Email cannot be changed after creation
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Mobile Field */}
+                  <div className="form-group">
+                    <label htmlFor="mobile">
+                      <Phone size={16} />
+                      Mobile Number *
+                    </label>
+                    <input
+                      id="mobile"
+                      type="tel"
+                      name="mobile"
+                      value={formData.mobile}
+                      onChange={handleChange}
+                      placeholder="e.g., 9876543210"
+                      maxLength="10"
+                      disabled={isSubmitting}
+                      className={formErrors.mobile ? "error" : ""}
+                    />
+                    {formErrors.mobile && (
+                      <span className="error-message">
+                        <AlertTriangle size={14} />
+                        {formErrors.mobile}
+                      </span>
+                    )}
+                    {!formErrors.mobile && formData.mobile.length === 10 && (
+                      <span className="success-message">
+                        <CheckCircle2 size={14} />
+                        Valid mobile number
+                      </span>
+                    )}
+                    {formData.mobile.length > 0 &&
+                      formData.mobile.length < 10 &&
+                      !formErrors.mobile && (
+                        <span className="info-message">
+                          {10 - formData.mobile.length} more digit
+                          {10 - formData.mobile.length !== 1 ? "s" : ""}{" "}
+                          required
+                        </span>
+                      )}
+                  </div>
+
+                  {/* Password Field */}
+                  {!editingUser && (
+                    <div className="form-group">
+                      <label htmlFor="password">🔒 Password *</label>
+                      <div className="password-input-wrapper">
+                        <input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          name="password"
+                          value={formData.password}
+                          onChange={handleChange}
+                          placeholder="Min 6 characters"
+                          minLength="6"
+                          maxLength="50"
+                          disabled={isSubmitting}
+                          className={formErrors.password ? "error" : ""}
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => setShowPassword(!showPassword)}
+                          tabIndex="-1"
+                        >
+                          {showPassword ? (
+                            <EyeOff size={18} />
+                          ) : (
+                            <Eye size={18} />
+                          )}
+                        </button>
+                      </div>
+                      {formErrors.password && (
+                        <span className="error-message">
+                          <AlertTriangle size={14} />
+                          {formErrors.password}
+                        </span>
+                      )}
+                      {passwordStrength.level && !formErrors.password && (
+                        <div className="password-strength">
+                          <div className="strength-bar-container">
+                            <div
+                              className={`strength-bar strength-${passwordStrength.level}`}
+                              style={{
+                                backgroundColor: passwordStrength.color,
+                              }}
+                            ></div>
+                          </div>
+                          <span
+                            style={{
+                              color: passwordStrength.color,
+                              fontSize: "0.85rem",
+                              fontWeight: "600",
+                            }}
+                          >
+                            {passwordStrength.text} password
+                          </span>
+                        </div>
+                      )}
+                      <span
+                        className="info-message"
+                        style={{ marginTop: "4px" }}
+                      >
+                        💡 Use 8+ characters with uppercase, numbers & symbols
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Role Field */}
+                  <div className="form-group">
+                    <label htmlFor="role">
+                      <Shield size={16} />
+                      User Role *
+                    </label>
+                    <select
+                      id="role"
+                      name="role"
+                      value={formData.role}
+                      onChange={handleChange}
+                      disabled={isSubmitting}
+                    >
+                      <option value="subadmin">👤 Sub Administrator</option>
+                      <option value="admin">👑 Administrator</option>
+                    </select>
+                    <span className="info-message">
+                      {formData.role === "admin"
+                        ? "👑 Full access to all features"
+                        : "👤 Limited access - files only"}
                     </span>
                   </div>
-                )}
-
-                {/* Role Field */}
-                <div className="form-group">
-                  <label htmlFor="role">
-                    <Shield size={16} />
-                    User Role *
-                  </label>
-                  <select
-                    id="role"
-                    name="role"
-                    value={formData.role}
-                    onChange={handleChange}
-                    disabled={isSubmitting}
-                  >
-                    <option value="subadmin">👤 Sub Administrator</option>
-                    <option value="admin">👑 Administrator</option>
-                  </select>
-                  <span className="info-message">
-                    {formData.role === "admin"
-                      ? "👑 Full access to all features"
-                      : "👤 Limited access - files only"}
-                  </span>
                 </div>
 
-                {/* Form Actions */}
+                {/* FOOTER - Sticky at bottom */}
                 <div className="modal-footer">
                   <button
                     type="button"
