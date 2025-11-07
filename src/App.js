@@ -1,16 +1,13 @@
-// src/App.js
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import Login from './components/Login';
-import SignUp from './components/SignUp';
-import Dashboard from './components/Dashboard';
-import SubAdminDashboard from './components/SubAdminDashboard';
-import FileUpload from './components/FileUpload';
-import RecordsView from './components/RecordsView';
-import ProtectedRoute from './components/ProtectedRoute';
-import AdminFileRecordsList from './components/AdminFileRecordsList';
-import FileRecordsList from './components/RecordsView';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import Login from "./components/Login";
+import Dashboard from "./components/Dashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
@@ -19,58 +16,37 @@ function App() {
         <div className="App">
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
 
-            {/* Admin Dashboard */}
+            {/* Unified Dashboard for both Admin and SubAdmin */}
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <Dashboard />
                 </ProtectedRoute>
               }
             />
+
+            {/* Redirect old routes to new unified dashboard */}
+            <Route
+              path="/subadmin-dashboard"
+              element={<Navigate to="/dashboard" replace />}
+            />
             <Route
               path="/dashboard-file-upload"
-              element={
-                <ProtectedRoute requiredRole="admin">
-                  <FileUpload />
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/dashboard" replace />}
             />
             <Route
               path="/dashboard-records-view"
-              element={
-                <ProtectedRoute requiredRole="admin">
-                  <AdminFileRecordsList />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* SubAdmin Dashboard */}
-            <Route
-              path="/subadmin-dashboard"
-              element={
-                <ProtectedRoute requiredRole="subadmin">
-                  <SubAdminDashboard />
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/dashboard" replace />}
             />
             <Route
               path="/subadmin-dashboard-file-upload"
-              element={
-                <ProtectedRoute requiredRole="subadmin">
-                  <FileUpload />
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/dashboard" replace />}
             />
             <Route
               path="/subadmin-dashboard-records-view"
-              element={
-                <ProtectedRoute requiredRole="subadmin">
-                  <FileRecordsList />
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/dashboard" replace />}
             />
 
             {/* Default redirect */}

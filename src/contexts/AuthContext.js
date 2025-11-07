@@ -1,13 +1,13 @@
 // src/contexts/AuthContext.js
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged 
-} from 'firebase/auth';
-import { ref, set, get } from 'firebase/database';
-import { auth, database } from '../firebase';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from "firebase/auth";
+import { ref, set, get } from "firebase/database";
+import { auth, database } from "../firebase";
 
 const AuthContext = createContext();
 
@@ -21,21 +21,101 @@ export const AuthProvider = ({ children }) => {
   const [userName, setUserName] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const signup = async (email, password, userData) => {
-    // console.log('AuthContext.js signup - userData:', userData);
+  // Create default admin user if it doesn't exist
+  const createDefaultAdmin = async () => {
+    const adminEmail = "admin@gmail.com";
+    const adminPassword = "admin@123";
+
     try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
+      // Check if admin already exists in database
+      const usersRef = ref(database, "user");
+      const snapshot = await get(usersRef);
+
+      let adminExists = false;
+      if (snapshot.exists()) {
+        const users = snapshot.val();
+        adminExists = Object.values(users).some(
+          (user) => user.email === adminEmail
+        );
+      }
+
+      if (adminExists) {
+        return;
+      }
+
+      // Try to create admin user
+      const result = await createUserWithEmailAndPassword(
+        auth,
+        adminEmail,
+        adminPassword
+      );
+
       const uid = result.user.uid;
-      
-      // Save user data to realtime database under 'user/' node
+
+      // Store admin data in database
+      await set(ref(database, `user/${uid}`), {
+        name: "Admin",
+        email: adminEmail,
+        mobile: "0000000000",
+        role: "admin",
+        createdAt: new Date().toISOString(),
+        isDefaultAdmin: true,
+      });
+
+      // Sign out after creation
+      await signOut(auth);
+    } catch (error) {
+      if (error.code === "auth/email-already-in-use") {
+        // Admin exists in Auth, check database
+        try {
+          const loginResult = await signInWithEmailAndPassword(
+            auth,
+            adminEmail,
+            adminPassword
+          );
+
+          const uid = loginResult.user.uid;
+          const userRef = ref(database, `user/${uid}`);
+          const userSnapshot = await get(userRef);
+
+          if (!userSnapshot.exists()) {
+            // User exists in Auth but not in Database
+            await set(ref(database, `user/${uid}`), {
+              name: "Admin",
+              email: adminEmail,
+              mobile: "0000000000",
+              role: "admin",
+              createdAt: new Date().toISOString(),
+              isDefaultAdmin: true,
+            });
+            console.log("✅ Admin data added to database");
+          }
+
+          await signOut(auth);
+        } catch (loginError) {
+          console.error("Error verifying admin:", loginError.message);
+        }
+      }
+    }
+  };
+
+  const signup = async (email, password, userData) => {
+    try {
+      const result = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const uid = result.user.uid;
+
       await set(ref(database, `user/${uid}`), {
         name: userData.name,
-        email: email, // Corrected: use the email argument
+        email: email,
         mobile: userData.mobile,
-        role: userData.role, // Removed default role
-        createdAt: new Date().toISOString()
+        role: userData.role,
+        createdAt: new Date().toISOString(),
       });
-      
+
       return result;
     } catch (error) {
       throw error;
@@ -62,9 +142,9 @@ export const AuthProvider = ({ children }) => {
       if (snapshot.exists() && snapshot.val().role) {
         return snapshot.val().role;
       }
-      return null; // Revert to null if not found
+      return null;
     } catch (error) {
-      console.error('AuthContext.js Error fetching user role:', error);
+      console.error("Error fetching user role:", error);
       return null;
     }
   };
@@ -78,29 +158,54 @@ export const AuthProvider = ({ children }) => {
       }
       return null;
     } catch (error) {
-      console.error('AuthContext.js Error fetching user name:', error);
+      console.error("Error fetching user name:", error);
       return null;
     }
   };
 
+  // Initialize app
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setCurrentUser(user);
-        const role = await getUserRole(user.uid);
-        const name = await getUserName(user.uid);
-        setUserRole(role);
-        setUserName(name);
-        setLoading(false); // Move setLoading(false) here
-      } else {
-        setCurrentUser(null);
-        setUserRole(null);
-        setUserName(null);
-        setLoading(false); // Also set loading to false if no user
-      }
-    });
+    let isMounted = true;
+    let unsubscribe;
 
-    return unsubscribe;
+    const initializeApp = async () => {
+      try {
+        // Create default admin only
+        await createDefaultAdmin();
+
+        // Set up auth state listener
+        unsubscribe = onAuthStateChanged(auth, async (user) => {
+          if (isMounted) {
+            if (user) {
+              setCurrentUser(user);
+              const role = await getUserRole(user.uid);
+              const name = await getUserName(user.uid);
+              setUserRole(role);
+              setUserName(name);
+            } else {
+              setCurrentUser(null);
+              setUserRole(null);
+              setUserName(null);
+            }
+            setLoading(false);
+          }
+        });
+      } catch (error) {
+        console.error("Error initializing app:", error);
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeApp();
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const value = {
@@ -109,7 +214,7 @@ export const AuthProvider = ({ children }) => {
     userName,
     signup,
     login,
-    logout
+    logout,
   };
 
   return (

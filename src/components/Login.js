@@ -1,39 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
-import { auth } from '../firebase';
-import { sendPasswordResetEmail } from 'firebase/auth';
+// src/components/Login.js
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { auth } from "../firebase";
+import { sendPasswordResetEmail } from "firebase/auth";
 
 const Login = () => {
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { login, currentUser, userRole } = useAuth();
   const navigate = useNavigate();
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [forgotPasswordError, setForgotPasswordError] = useState('');
+  const [resetEmail, setResetEmail] = useState("");
+  const [forgotPasswordError, setForgotPasswordError] = useState("");
   const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
 
-  // Watch for role changes after login
+  // Redirect if already logged in
   useEffect(() => {
     if (currentUser && userRole) {
-      if (userRole === 'admin') {
-        navigate('/dashboard');
-      } else if (userRole === 'subadmin') {
-        navigate('/subadmin-dashboard');
-      }
+      navigate("/dashboard", { replace: true });
     }
   }, [currentUser, userRole, navigate]);
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -41,12 +38,12 @@ const Login = () => {
     e.preventDefault();
 
     try {
-      setError('');
+      setError("");
       setLoading(true);
       await login(formData.email, formData.password);
-      // Navigation handled by useEffect
+      // Navigation will happen automatically via useEffect
     } catch (error) {
-      setError('Failed to login: ' + error.message);
+      setError("Failed to login: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -54,36 +51,40 @@ const Login = () => {
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    setForgotPasswordError('');
+    setForgotPasswordError("");
     setForgotPasswordSuccess(false);
     setLoading(true);
 
     const emailToSend = resetEmail || formData.email;
 
     if (!emailToSend) {
-      setForgotPasswordError('Please enter your email address.');
+      setForgotPasswordError("Please enter your email address.");
       setLoading(false);
       return;
     }
 
     try {
-      const { database } = await import('../firebase');
-      const { ref, get } = await import('firebase/database');
+      const { database } = await import("../firebase");
+      const { ref, get } = await import("firebase/database");
 
-      const usersRef = ref(database, 'user');
+      const usersRef = ref(database, "user");
       const snapshot = await get(usersRef);
 
       if (!snapshot.exists()) {
-        setForgotPasswordError('No users found in database.');
+        setForgotPasswordError("No users found in database.");
         setLoading(false);
         return;
       }
 
       const users = snapshot.val();
-      const userExists = Object.values(users).some(user => user.email === emailToSend);
+      const userExists = Object.values(users).some(
+        (user) => user.email === emailToSend
+      );
 
       if (!userExists) {
-        setForgotPasswordError('Email address not found in our system. Please check your email or contact support.');
+        setForgotPasswordError(
+          "Email address not found in our system. Please check your email or contact support."
+        );
         setLoading(false);
         return;
       }
@@ -91,7 +92,9 @@ const Login = () => {
       await sendPasswordResetEmail(auth, emailToSend);
       setForgotPasswordSuccess(true);
     } catch (error) {
-      setForgotPasswordError('Failed to send password reset email: ' + error.message);
+      setForgotPasswordError(
+        "Failed to send password reset email: " + error.message
+      );
     } finally {
       setLoading(false);
     }
@@ -127,7 +130,6 @@ const Login = () => {
                         linear-gradient(180deg, #0b1020 0%, #060812 100%);
           }
 
-          /* Background layers */
           .bg-fallback,
           .bg-video,
           .bg-overlay,
@@ -156,7 +158,6 @@ const Login = () => {
             filter: saturate(1.2) contrast(1.05) brightness(0.75) hue-rotate(-5deg);
           }
 
-          /* Gradient blobs for depth */
           .blob {
             position: absolute;
             border-radius: 50%;
@@ -197,7 +198,6 @@ const Login = () => {
             66%      { transform: translate3d(-20px, 25px, 0) scale(0.98); }
           }
 
-          /* Dark overlay to ensure legibility */
           .bg-overlay {
             z-index: 3;
             background:
@@ -207,7 +207,6 @@ const Login = () => {
             -webkit-backdrop-filter: saturate(110%) brightness(95%);
           }
 
-          /* Subtle grid */
           .bg-grid {
             z-index: 4;
             background-image:
@@ -217,7 +216,6 @@ const Login = () => {
             mix-blend-mode: overlay;
           }
 
-          /* Texture */
           .bg-noise {
             z-index: 5;
             opacity: 0.04;
@@ -226,7 +224,6 @@ const Login = () => {
             image-rendering: pixelated;
           }
 
-          /* Glassmorphism card */
           .modern-login-form {
             position: relative;
             z-index: 10;
@@ -388,11 +385,7 @@ const Login = () => {
             transform: translateY(-2px);
             box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
             border-color: rgba(255, 255, 255, 0.5);
-            background: linear-gradient(135deg,
-          rgba(236, 72, 153, 0.32) 0%,
-          rgba(99, 102, 241, 0.32) 50%,
-          rgba(56, 189, 248, 0.32) 100%
-        );
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.32) 0%, rgba(99, 102, 241, 0.32) 50%, rgba(56, 189, 248, 0.32) 100%);
           }
           .modern-login-button:disabled {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
@@ -489,7 +482,6 @@ const Login = () => {
           }
           @keyframes spin { to { transform: rotate(360deg); } }
 
-          /* Responsive */
           @media (max-width: 768px) {
             .modern-login-container { padding: 16px; }
             .modern-login-form { padding: 2rem 1.5rem; border-radius: 20px; }
@@ -504,7 +496,6 @@ const Login = () => {
             .modern-login-title { font-size: 1.8rem; }
           }
 
-          /* High contrast mode */
           @media (prefers-contrast: high) {
             .modern-login-form {
               background: rgba(0, 0, 0, 0.85);
@@ -521,7 +512,6 @@ const Login = () => {
             }
           }
 
-          /* Reduced motion: pause video and blobs */
           @media (prefers-reduced-motion: reduce) {
             * {
               animation-duration: 0.01ms !important;
@@ -532,7 +522,6 @@ const Login = () => {
             .bg-video { display: none; }
           }
 
-          /* Focus styles */
           .modern-login-button:focus,
           .modern-form-group input:focus,
           .modern-link:focus,
@@ -544,7 +533,6 @@ const Login = () => {
       </style>
 
       <div className="modern-login-container">
-        {/* Media background */}
         <img
           src="/media/login/poster.jpg"
           alt=""
@@ -563,21 +551,20 @@ const Login = () => {
           <source src="/media/login/galaxy.mp4" type="video/mp4" />
         </video>
 
-        {/* Gradient blobs */}
         <div className="bg-blob blob blob-1" aria-hidden="true"></div>
         <div className="bg-blob blob blob-2" aria-hidden="true"></div>
         <div className="bg-blob blob blob-3" aria-hidden="true"></div>
 
-        {/* Overlays */}
         <div className="bg-overlay" aria-hidden="true"></div>
         <div className="bg-grid" aria-hidden="true"></div>
         <div className="bg-noise" aria-hidden="true"></div>
 
-        {/* Auth card */}
         <div className="modern-login-form">
           <h1 className="modern-login-title">Welcome Back</h1>
           <p className="modern-login-subtitle">
-            {showForgotPassword ? 'Reset your password' : 'Sign in to your account'}
+            {showForgotPassword
+              ? "Reset your password"
+              : "Sign in to your account"}
           </p>
 
           {error && (
@@ -599,8 +586,18 @@ const Login = () => {
               <div className="modern-form-group">
                 <label htmlFor="email">Email Address</label>
                 <div className="modern-input-container">
-                  <svg className="modern-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                  <svg
+                    className="modern-input-icon"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                    />
                   </svg>
                   <input
                     id="email"
@@ -617,8 +614,18 @@ const Login = () => {
               <div className="modern-form-group">
                 <label htmlFor="password">Password</label>
                 <div className="modern-input-container">
-                  <svg className="modern-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  <svg
+                    className="modern-input-icon"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
                   </svg>
                   <input
                     id="password"
@@ -633,29 +640,63 @@ const Login = () => {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="password-toggle"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
                     {showPassword ? (
-                      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                      <svg
+                        width="18"
+                        height="18"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
+                        />
                       </svg>
                     ) : (
-                      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      <svg
+                        width="18"
+                        height="18"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
                       </svg>
                     )}
                   </button>
                 </div>
               </div>
 
-              <button type="submit" disabled={loading} className="modern-login-button">
+              <button
+                type="submit"
+                disabled={loading}
+                className="modern-login-button"
+              >
                 {loading ? (
                   <>
                     <div className="modern-spinner"></div>
                     Signing In...
                   </>
                 ) : (
-                  'Sign In'
+                  "Sign In"
                 )}
               </button>
             </form>
@@ -663,25 +704,21 @@ const Login = () => {
 
           {!loading && !showForgotPassword && (
             <div className="modern-link-section">
-              <div style={{ marginBottom: '1rem' }}>
-                <button
-                  onClick={() => {
-                    setShowForgotPassword(true);
-                    setResetEmail(formData.email);
-                    setError('');
-                  }}
-                  className="modern-link"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                >
-                  Forgot Password?
-                </button>
-              </div>
-              <div className="modern-link-text">
-                Don't have an account?{' '}
-                <Link to="/signup" className="modern-link">
-                  Create Account
-                </Link>
-              </div>
+              <button
+                onClick={() => {
+                  setShowForgotPassword(true);
+                  setResetEmail(formData.email);
+                  setError("");
+                }}
+                className="modern-link"
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Forgot Password?
+              </button>
             </div>
           )}
 
@@ -696,8 +733,19 @@ const Login = () => {
 
               {forgotPasswordSuccess ? (
                 <div className="modern-success-message">
-                  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                  <svg
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   Password reset email sent! Check your inbox.
                 </div>
@@ -706,8 +754,18 @@ const Login = () => {
                   <div className="modern-form-group">
                     <label htmlFor="resetEmail">Email Address</label>
                     <div className="modern-input-container">
-                      <svg className="modern-input-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                      <svg
+                        className="modern-input-icon"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                        />
                       </svg>
                       <input
                         id="resetEmail"
@@ -721,14 +779,18 @@ const Login = () => {
                     </div>
                   </div>
 
-                  <button type="submit" disabled={loading} className="modern-login-button">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="modern-login-button"
+                  >
                     {loading ? (
                       <>
                         <div className="modern-spinner"></div>
                         Sending...
                       </>
                     ) : (
-                      'Send Reset Email'
+                      "Send Reset Email"
                     )}
                   </button>
                 </form>
@@ -738,15 +800,33 @@ const Login = () => {
                 <button
                   onClick={() => {
                     setShowForgotPassword(false);
-                    setForgotPasswordError('');
+                    setForgotPasswordError("");
                     setForgotPasswordSuccess(false);
-                    setResetEmail('');
+                    setResetEmail("");
                   }}
                   className="modern-link"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
                 >
-                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  <svg
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    />
                   </svg>
                   Back to Login
                 </button>
