@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+  publish = "build"
+  
+[build.environment]
+  NODE_VERSION = "18.20.5"
+  NPM_VERSION = "10.9.0"
+  CI = "false"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
