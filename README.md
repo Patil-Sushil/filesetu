@@ -58,6 +58,12 @@ npm install
 
 4. **Important**: Never commit your `.env` file to version control. It's already included in `.gitignore`.
 
+5. **Optional**: Verify your setup by running the verification script:
+   ```bash
+   ./verify-setup.sh
+   ```
+   This will check that all required dependencies and configuration are in place.
+
 ## Running the Application
 
 ### Development Mode
