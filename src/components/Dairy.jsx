@@ -34,7 +34,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 const Dairy = ({ showToast }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, userRole } = useAuth();
 
   // ========== STATE MANAGEMENT ==========
   const [entries, setEntries] = useState([]);
@@ -85,6 +85,14 @@ const Dairy = ({ showToast }) => {
 
   const [errors, setErrors] = useState({});
 
+  // ========== HELPER FUNCTION TO GET DATABASE PATH ==========
+  const getDatabasePath = () => {
+    if (userRole === "admin") {
+      return "dairy/admin"; // Shared path for all admin users
+    }
+    return `dairy/${currentUser.uid}`; // User-specific path for non-admin
+  };
+
   // ========== LIFECYCLE EFFECTS ==========
   useEffect(() => {
     const saved = localStorage.getItem("dairyReportConfig");
@@ -94,10 +102,17 @@ const Dairy = ({ showToast }) => {
   }, []);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || userRole === null || userRole === undefined) {
+      setLoading(false);
+      return;
+    }
 
     const db = getDatabase();
-    const dairyRef = dbRef(db, `dairy/${currentUser.uid}`);
+    const dairyRef = dbRef(db, getDatabasePath());
+
+    console.log("🔍 Dairy - User:", currentUser?.email);
+    console.log("🔍 Dairy - Role:", userRole);
+    console.log("🔍 Dairy - Path:", getDatabasePath());
 
     const unsubscribe = onValue(
       dairyRef,
@@ -108,20 +123,22 @@ const Dairy = ({ showToast }) => {
             .map(([id, entry]) => ({ id, ...entry }))
             .sort((a, b) => new Date(a.date) - new Date(b.date));
           setEntries(entriesArray);
+          console.log("✅ Dairy entries loaded:", entriesArray.length);
         } else {
           setEntries([]);
+          console.log("ℹ️ No dairy entries found");
         }
         setLoading(false);
       },
       (err) => {
-        console.error("Error fetching entries:", err);
+        console.error("❌ Error fetching entries:", err);
         showToast?.error("Failed to load entries");
         setLoading(false);
       }
     );
 
     return () => unsubscribe();
-  }, [currentUser, showToast]);
+  }, [currentUser, userRole, showToast]);
 
   useEffect(() => {
     if (showReportModal) {
@@ -339,7 +356,7 @@ const Dairy = ({ showToast }) => {
 
     try {
       const db = getDatabase();
-      await remove(dbRef(db, `dairy/${currentUser.uid}/${selectedEntry.id}`));
+      await remove(dbRef(db, `${getDatabasePath()}/${selectedEntry.id}`));
       showToast?.success("Entry deleted successfully!");
       setShowDeleteConfirm(false);
       setSelectedEntry(null);
@@ -370,7 +387,7 @@ const Dairy = ({ showToast }) => {
 
     try {
       const db = getDatabase();
-      const newRef = push(dbRef(db, `dairy/${currentUser.uid}`));
+      const newRef = push(dbRef(db, getDatabasePath()));
       await set(newRef, {
         date: formData.date,
         travelFrom: formData.travelFrom,
@@ -381,6 +398,7 @@ const Dairy = ({ showToast }) => {
         vehicle: formData.vehicle,
         remark: formData.remark || "",
         createdAt: new Date().toISOString(),
+        createdBy: currentUser.uid,
       });
 
       showToast?.success("Entry added successfully!");
@@ -418,7 +436,7 @@ const Dairy = ({ showToast }) => {
 
     try {
       const db = getDatabase();
-      const entryRef = dbRef(db, `dairy/${currentUser.uid}/${editingEntryId}`);
+      const entryRef = dbRef(db, `${getDatabasePath()}/${editingEntryId}`);
       await update(entryRef, {
         date: formData.date,
         travelFrom: formData.travelFrom,
@@ -429,6 +447,7 @@ const Dairy = ({ showToast }) => {
         vehicle: formData.vehicle,
         remark: formData.remark || "",
         updatedAt: new Date().toISOString(),
+        updatedBy: currentUser.uid,
       });
 
       showToast?.success("Entry updated successfully!");
@@ -522,7 +541,7 @@ const Dairy = ({ showToast }) => {
           <div className="dairy-header-left">
             <h2>
               <BookOpen size={24} />
-              Travel Diary
+              Travel Diary 
             </h2>
             <p>Track your travel & print monthly report</p>
           </div>
@@ -1354,7 +1373,7 @@ const Dairy = ({ showToast }) => {
         )}
       </AnimatePresence>
 
-      {/* REPORT MODAL */}
+      {/* REPORT MODAL - Keep your existing report modal code here */}
       <AnimatePresence>
         {showReportModal && (
           <motion.div
@@ -1679,17 +1698,17 @@ const Dairy = ({ showToast }) => {
 
                 <div className="sign-section">
                   <div className="sign-name">
-                    ( {reportConfig.employeeName} )
+                    ( {reportConfig.employeeName} )&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                   </div>
                   <div className="sign-name">{reportConfig.designation},</div>
                   {reportConfig.officeName && (
                     <div className="sign-office">
-                      {reportConfig.officeName}
+                      {reportConfig.officeName}&nbsp;&nbsp;&nbsp;
                     </div>
                   )}
                   {reportConfig.officeLocation && (
                     <div className="sign-location">
-                      {reportConfig.officeLocation}
+                      {reportConfig.officeLocation}&nbsp;&nbsp;&nbsp;
                     </div>
                   )}
                 </div>
@@ -1729,6 +1748,18 @@ const Dairy = ({ showToast }) => {
 
         * {
           box-sizing: border-box;
+        }
+
+        .admin-badge {
+          display: inline-block;
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          font-size: 0.7rem;
+          padding: 0.2rem 0.6rem;
+          border-radius: 12px;
+          margin-left: 0.5rem;
+          font-weight: 600;
+          vertical-align: middle;
         }
 
         .dairy-container {
@@ -2601,7 +2632,7 @@ const Dairy = ({ showToast }) => {
         .sign-office,
         .sign-location {
           font-size: 0.9rem;
-          font-weight: 500;
+          font-weight: 300;
         }
 
         /* PRINT */

@@ -85,7 +85,8 @@ const split12 = (t12) => {
 };
 
 const LogBook = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, userRole } = useAuth();
+  
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -124,6 +125,14 @@ const LogBook = () => {
     setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
   };
 
+  // ========== HELPER FUNCTION TO GET DATABASE PATH ==========
+  const getDatabasePath = () => {
+    if (userRole === "admin") {
+      return "logbook/admin"; // Shared path for all admin users
+    }
+    return `logbook/${currentUser.uid}`; // User-specific path for non-admin
+  };
+
   // Auto-calculate kilometers
   useEffect(() => {
     const before = parseFloat(formData.beforeMeterReading);
@@ -141,10 +150,17 @@ const LogBook = () => {
 
   // Fetch logs from Firebase
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || userRole === null || userRole === undefined) {
+      setLoading(false);
+      return;
+    }
 
     const db = getDatabase();
-    const logbookRef = dbRef(db, `logbook/${currentUser.uid}`);
+    const logbookRef = dbRef(db, getDatabasePath());
+
+    console.log("🔍 LogBook - User:", currentUser?.email);
+    console.log("🔍 LogBook - Role:", userRole);
+    console.log("🔍 LogBook - Path:", getDatabasePath());
 
     const unsubscribe = onValue(
       logbookRef,
@@ -165,20 +181,22 @@ const LogBook = () => {
             })
             .sort((a, b) => new Date(b.date) - new Date(a.date));
           setLogs(logsArray);
+          console.log("✅ LogBook entries loaded:", logsArray.length);
         } else {
           setLogs([]);
+          console.log("ℹ️ No logbook entries found");
         }
         setLoading(false);
       },
       (err) => {
-        console.error("Error fetching log entries:", err);
+        console.error("❌ Error fetching log entries:", err);
         showToast("Failed to load log entries", "error");
         setLoading(false);
       }
     );
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, userRole]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -302,7 +320,7 @@ const LogBook = () => {
 
     try {
       const db = getDatabase();
-      const logbookRef = dbRef(db, `logbook/${currentUser.uid}`);
+      const logbookRef = dbRef(db, getDatabasePath());
       const newLogRef = push(logbookRef);
 
       await set(newLogRef, {
@@ -320,6 +338,7 @@ const LogBook = () => {
         usedBy: formData.usedBy,
         remarks: "",
         createdAt: new Date().toISOString(),
+        createdBy: currentUser.uid,
         updatedAt: new Date().toISOString(),
       });
 
@@ -352,7 +371,7 @@ const LogBook = () => {
 
     try {
       const db = getDatabase();
-      const logRef = dbRef(db, `logbook/${currentUser.uid}/${selectedLog.id}`);
+      const logRef = dbRef(db, `${getDatabasePath()}/${selectedLog.id}`);
 
       await update(logRef, {
         date: formData.date,
@@ -369,6 +388,7 @@ const LogBook = () => {
         usedBy: formData.usedBy,
         remarks: "",
         updatedAt: new Date().toISOString(),
+        updatedBy: currentUser.uid,
       });
 
       showToast("Log updated successfully!", "success");
@@ -393,7 +413,7 @@ const LogBook = () => {
     if (!selectedLog) return;
     try {
       const db = getDatabase();
-      await remove(dbRef(db, `logbook/${currentUser.uid}/${selectedLog.id}`));
+      await remove(dbRef(db, `${getDatabasePath()}/${selectedLog.id}`));
       showToast("Log deleted successfully!", "success");
       setShowDeleteConfirm(false);
       setShowDetailModal(false);
@@ -723,7 +743,7 @@ const LogBook = () => {
           <div className="logbook-header-left">
             <h2>
               <Car size={24} />
-              Vehicle Log Book
+              Vehicle Log Book 
             </h2>
             <p>Track and manage your daily vehicle records</p>
           </div>
@@ -1469,6 +1489,19 @@ const LogBook = () => {
         /* ===== GLOBAL RESETS ===== */
         * {
           box-sizing: border-box;
+        }
+
+        /* ===== ADMIN BADGE ===== */
+        .admin-badge {
+          display: inline-block;
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          font-size: 0.7rem;
+          padding: 0.2rem 0.6rem;
+          border-radius: 12px;
+          margin-left: 0.5rem;
+          font-weight: 600;
+          vertical-align: middle;
         }
 
         /* ===== TOAST - TOP RIGHT ===== */
