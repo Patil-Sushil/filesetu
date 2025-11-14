@@ -402,12 +402,17 @@
 
   .sidebar {
     transform: translateX(-100%);
-    width: 280px !important;
+    width: 84vw !important;
+    max-width: 320px;
     box-shadow: none;
+    border-top-right-radius: 16px;
+    border-bottom-right-radius: 16px;
+    padding-top: max(16px, env(safe-area-inset-top));
+    overscroll-behavior: contain;
   }
 
   .sidebar.mobile-open {
-    transform: translateX(0);
+    transform: translateX(0) !important; /* ensure open state wins on mobile */
     box-shadow: 8px 0 24px rgba(0, 0, 0, 0.3);
   }
 

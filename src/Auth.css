@@ -365,3 +365,42 @@
     min-height: 44px;
   }
 }
+/* Auth page responsive improvements */
+/* Expected structure:
+   <div class="auth-page container">
+     <section class="auth-card"> ... </section>
+   </div>
+*/
+
+.auth-page{
+  min-height: calc(100vh - var(--header-height));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:40px 16px;
+}
+
+.auth-card{
+  background:var(--panel);
+  border-radius:12px;
+  padding:24px;
+  max-width:480px;
+  width:100%;
+  box-shadow:var(--shadow-md);
+}
+
+/* Form layout */
+.auth-card form{display:flex;flex-direction:column;gap:12px}
+.auth-card .form-row{display:flex;gap:12px}
+.auth-card .form-row .col{flex:1}
+
+/* Mobile: single column */
+@media (max-width:600px){
+  .auth-card{padding:18px;margin:0 8px}
+  .auth-card .form-row{flex-direction:column}
+}
+
+/* Tablet/desktop tweaks */
+@media (min-width: 601px){
+  .auth-card{padding:28px}
+}

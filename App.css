@@ -1,38 +1,152 @@
-.App {
-  text-align: center;
+/* App layout: header, sidebar, main content */
+/* Structure expected in App.js:
+   <div class="app-root">
+     <header class="app-header">...</header>
+     <div class="app-body">
+       <aside class="sidebar">...</aside>
+       <main class="main-content container">...</main>
+     </div>
+   </div>
+*/
+
+/* Root */
+.app-root{
+  display:flex;
+  flex-direction:column;
+  min-height:100vh;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* Header */
+.app-header{
+  height:var(--header-height);
+  background:var(--panel);
+  display:flex;
+  align-items:center;
+  padding:0 var(--container-padding);
+  box-shadow:var(--shadow-sm);
+  z-index:50;
+  position:sticky;
+  top:0;
+}
+.app-header .brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-weight:700;
+  color:var(--accent-600);
+}
+.app-header .header-actions{margin-left:auto; display:flex; gap:8px; align-items:center}
+
+/* Body layout */
+.app-body{
+  flex:1;
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:var(--gap);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
+/* Sidebar */
+.sidebar{
+  background:var(--panel);
+  padding:16px;
+  border-radius:8px;
+  box-shadow:var(--shadow-sm);
+  transition:transform .25s ease, opacity .25s ease;
+}
+
+/* Main content */
+.main-content{
+  padding:16px 0;
+  min-height:calc(100vh - var(--header-height) - 32px);
+}
+
+/* File list / cards inside main-content */
+.file-list-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+/* Mobile: sidebar off-canvas */
+.sidebar--mobile {
+  position:fixed;
+  top:var(--header-height);
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:80;
+  transform:translateY(100%);
+  opacity:0;
+  overflow:auto;
+  padding:20px;
+}
+.sidebar--mobile.open{
+  transform:translateY(0);
+  opacity:1;
+  box-shadow:var(--shadow-md);
+}
+
+/* Dim overlay for mobile menu */
+.overlay{
+  display:none;
+}
+.overlay.show{
+  display:block;
+  position:fixed;
+  inset:0;
+  background:rgba(2,6,23,0.5);
+  z-index:70;
+}
+
+/* Desktop layout: sidebar + content */
+@media (min-width: 1024px){
+  .app-body{
+    grid-template-columns: 260px 1fr;
+    align-items:start;
+    gap:24px;
+    padding:24px var(--container-padding);
   }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+  .sidebar{
+    position:sticky;
+    top:calc(var(--header-height) + 16px);
+    height:calc(100vh - var(--header-height) - 32px);
+    overflow:auto;
   }
-  to {
-    transform: rotate(360deg);
+  .main-content{padding:0}
+  .sidebar--mobile{display:none}
+}
+
+/* Tablet: keep sidebar as small panel */
+@media (min-width: 769px) and (max-width: 1023px){
+  .app-body{
+    grid-template-columns: 180px 1fr;
+    gap:16px;
+    padding:16px var(--container-padding);
   }
+  .sidebar{padding:12px}
+}
+
+/* File card responsive tweaks */
+.card .actions{
+  margin-top:auto;
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+}
+
+/* Make utility buttons full width on small screens */
+@media (max-width: 480px){
+  .btn{padding:10px 14px;font-size:0.95rem}
+  .file-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+  .card{padding:10px}
+}
+
+/* Form controls */
+.input, input[type="text"], input[type="email"], textarea{
+  width:100%;
+  padding:10px 12px;
+  border-radius:8px;
+  border:1px solid #e6edf3;
+  background:#fff;
+  outline:none;
 }
