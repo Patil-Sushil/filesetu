@@ -21,7 +21,7 @@ export default defineConfig({
     open: true,
   },
   build: {
-    outDir: "build",
+    outDir: "dist",
     sourcemap: false,
     rollupOptions: {
       output: {
