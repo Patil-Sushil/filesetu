@@ -110,9 +110,7 @@ const Dairy = ({ showToast }) => {
     const db = getDatabase();
     const dairyRef = dbRef(db, getDatabasePath());
 
-    console.log("🔍 Dairy - User:", currentUser?.email);
-    console.log("🔍 Dairy - Role:", userRole);
-    console.log("🔍 Dairy - Path:", getDatabasePath());
+   
 
     const unsubscribe = onValue(
       dairyRef,
@@ -1059,7 +1057,7 @@ const Dairy = ({ showToast }) => {
                 <div>
                   <label htmlFor="remark" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <MessageSquare size={16} />
-                    Remark (Optional)
+                    Remark (शेरा)
                   </label>
                   <textarea
                     id="remark"

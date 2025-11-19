@@ -158,9 +158,7 @@ const LogBook = () => {
     const db = getDatabase();
     const logbookRef = dbRef(db, getDatabasePath());
 
-    console.log("🔍 LogBook - User:", currentUser?.email);
-    console.log("🔍 LogBook - Role:", userRole);
-    console.log("🔍 LogBook - Path:", getDatabasePath());
+    
 
     const unsubscribe = onValue(
       logbookRef,

@@ -1,8 +1,14 @@
 // src/components/FileRecordsList.js
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { database } from "../firebase";
-import { ref, onValue, remove } from "firebase/database";
+import { database, storage } from "../firebase";
+import { ref, onValue, remove, set } from "firebase/database";
+import {
+  ref as storageRef,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject,
+} from "firebase/storage";
 import FileUpload from "./FileUpload";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -23,6 +29,9 @@ import {
   MessageSquare,
   Tag,
   CheckCircle2,
+  Upload,
+  Paperclip,
+  ChevronRight,
 } from "lucide-react";
 
 // Toast Notification Component
@@ -124,6 +133,363 @@ const ConfirmationDialog = ({ isOpen, onClose, onConfirm, title, message }) => {
   );
 };
 
+// Attachment Viewer Modal
+const AttachmentViewerModal = ({
+  isOpen,
+  onClose,
+  attachment,
+  recordInfo,
+  showToast,
+}) => {
+  if (!isOpen || !attachment) return null;
+
+  const handleDownload = async () => {
+    try {
+      showToast("⏳ Preparing download...", "info");
+
+      const response = await fetch(attachment.fileURL, { mode: "cors" });
+      if (!response.ok) throw new Error("Failed to fetch file");
+
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = attachment.fileName || "attachment";
+      link.style.display = "none";
+
+      document.body.appendChild(link);
+      link.click();
+
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      }, 100);
+
+      showToast("✅ Download completed!", "success");
+    } catch (err) {
+      console.error("Download error:", err);
+      showToast("❌ Failed to download file", "error");
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return "Unknown";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "N/A";
+    const date = new Date(timestamp);
+    return date.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="attachment-viewer-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="attachment-viewer-modal"
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="attachment-viewer-header">
+            <div className="attachment-viewer-title">
+              <Eye size={22} />
+              <div>
+                <h3>View Attachment</h3>
+                <p className="attachment-viewer-subtitle">
+                  Inward No:{" "}
+                  <strong>{recordInfo?.inwardNumber || "N/A"}</strong>
+                </p>
+              </div>
+            </div>
+            <button className="attachment-viewer-close-btn" onClick={onClose}>
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="attachment-file-info">
+            <div className="file-info-item">
+              <FileText size={16} />
+              <span className="file-info-label">File Name:</span>
+              <span className="file-info-value">{attachment.fileName}</span>
+            </div>
+            <div className="file-info-item">
+              <Paperclip size={16} />
+              <span className="file-info-label">Size:</span>
+              <span className="file-info-value">
+                {formatFileSize(attachment.fileSize)}
+              </span>
+            </div>
+            <div className="file-info-item">
+              <Clock size={16} />
+              <span className="file-info-label">Uploaded:</span>
+              <span className="file-info-value">
+                {formatDate(attachment.uploadedAt)}
+              </span>
+            </div>
+            <div className="file-info-item">
+              <User size={16} />
+              <span className="file-info-label">Uploaded By:</span>
+              <span className="file-info-value">{attachment.uploaderName}</span>
+            </div>
+          </div>
+
+          <div className="attachment-viewer-actions">
+            <button
+              className="attachment-download-action-btn"
+              onClick={handleDownload}
+            >
+              <Download size={18} />
+              <span>Download File</span>
+            </button>
+          </div>
+
+          <div className="attachment-viewer-content">
+            <div className="attachment-preview-container">
+              {attachment.fileType?.startsWith("image/") ? (
+                <img
+                  src={attachment.fileURL}
+                  alt={attachment.fileName}
+                  className="attachment-preview-image"
+                />
+              ) : attachment.fileType === "application/pdf" ? (
+                <iframe
+                  src={attachment.fileURL}
+                  title={attachment.fileName}
+                  className="attachment-preview-iframe"
+                />
+              ) : (
+                <div className="attachment-no-preview">
+                  <FileText size={64} />
+                  <p className="no-preview-title">{attachment.fileName}</p>
+                  <p className="no-preview-text">
+                    Preview not available for this file type
+                  </p>
+                  <button
+                    className="no-preview-download-btn"
+                    onClick={handleDownload}
+                  >
+                    <Download size={18} />
+                    Download to view
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+// Single Attachment Upload Modal
+const AttachmentUploadModal = ({ isOpen, onClose, record, showToast }) => {
+  const { currentUser } = useAuth();
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 15 * 1024 * 1024) {
+        showToast("File size must be less than 15MB", "error");
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile || !record) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const timestamp = Date.now();
+      const fileName = `${timestamp}_${selectedFile.name}`;
+      const fileRef = storageRef(
+        storage,
+        `attachments/${record.id}/${fileName}`
+      );
+
+      const uploadTask = uploadBytesResumable(fileRef, selectedFile);
+
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
+          const progress =
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(Math.round(progress));
+        },
+        (error) => {
+          console.error("Upload error:", error);
+          showToast("Upload failed", "error");
+          setUploading(false);
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+
+          const attachmentRef = ref(database, `attachments/${record.id}`);
+
+          await set(attachmentRef, {
+            fileName: selectedFile.name,
+            fileURL: downloadURL,
+            storagePath: `attachments/${record.id}/${fileName}`,
+            fileType: selectedFile.type,
+            fileSize: selectedFile.size,
+            uploadedBy: currentUser.uid,
+            uploaderName: currentUser.displayName || currentUser.email,
+            uploadedAt: timestamp,
+            inwardNumber: record.inwardNumber,
+          });
+
+          showToast("✅ File uploaded successfully!", "success");
+          setSelectedFile(null);
+          setUploading(false);
+          setUploadProgress(0);
+          onClose();
+
+          const fileInput = document.getElementById("attachment-file-input");
+          if (fileInput) fileInput.value = "";
+        }
+      );
+    } catch (error) {
+      console.error("Upload error:", error);
+      showToast("Upload failed", "error");
+      setUploading(false);
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  };
+
+  if (!isOpen || !record) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="attachment-upload-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="attachment-upload-modal"
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="attachment-modal-header">
+            <div className="attachment-header-title">
+              <Upload size={22} />
+              <div>
+                <h3>Upload Attachment</h3>
+                <p className="attachment-subtitle">
+                  Inward No: <strong>{record.inwardNumber || "N/A"}</strong>
+                </p>
+              </div>
+            </div>
+            <button className="attachment-close-btn" onClick={onClose}>
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="attachment-upload-section">
+            <div className="attachment-upload-form">
+              <div className="file-input-wrapper">
+                <input
+                  id="attachment-file-input"
+                  type="file"
+                  onChange={handleFileSelect}
+                  disabled={uploading}
+                  className="file-input-hidden"
+                />
+                <label
+                  htmlFor="attachment-file-input"
+                  className="file-input-label"
+                >
+                  <Paperclip size={18} />
+                  {selectedFile
+                    ? selectedFile.name
+                    : "Choose file to upload (Max 15MB)..."}
+                </label>
+              </div>
+
+              {selectedFile && (
+                <div className="selected-file-info">
+                  <FileText size={16} />
+                  <span className="file-size-text">
+                    {formatFileSize(selectedFile.size)}
+                  </span>
+                  <span className="file-type-text">
+                    {selectedFile.type || "Unknown type"}
+                  </span>
+                </div>
+              )}
+
+              {uploading && (
+                <div className="upload-progress-bar">
+                  <div
+                    className="upload-progress-fill"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                  <span className="upload-progress-text">
+                    {uploadProgress}%
+                  </span>
+                </div>
+              )}
+
+              <div className="upload-actions">
+                <button
+                  className="upload-cancel-btn"
+                  onClick={onClose}
+                  disabled={uploading}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="upload-submit-btn"
+                  onClick={handleUpload}
+                  disabled={!selectedFile || uploading}
+                >
+                  {uploading ? "Uploading..." : "Upload File"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 // Compact Record Viewer Modal
 const CompactRecordViewerModal = ({
   isOpen,
@@ -174,7 +540,6 @@ const CompactRecordViewerModal = ({
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header with Actions */}
           <div className="compact-viewer-header">
             <div className="header-title-section">
               <FileText size={22} />
@@ -185,7 +550,6 @@ const CompactRecordViewerModal = ({
             </button>
           </div>
 
-          {/* Action Buttons */}
           <div className="compact-action-buttons">
             <button
               className="compact-btn edit-compact-btn"
@@ -220,9 +584,7 @@ const CompactRecordViewerModal = ({
             )}
           </div>
 
-          {/* Record Information */}
           <div className="compact-viewer-body">
-            {/* File Preview */}
             <div className="compact-preview-section">
               <div className="compact-preview-container">
                 {record.fileType?.startsWith("image/") ? (
@@ -246,7 +608,6 @@ const CompactRecordViewerModal = ({
               </div>
             </div>
 
-            {/* Information Grid */}
             <div className="compact-info-grid">
               <div className="compact-info-item">
                 <div className="compact-info-label">
@@ -394,7 +755,7 @@ const CompactRecordViewerModal = ({
   );
 };
 
-// MAIN COMPONENT WITH STATUS FILTER SUPPORT
+// MAIN COMPONENT
 const FileRecordsList = ({ stats, statusFilter }) => {
   const { currentUser, userRole } = useAuth();
   const [records, setRecords] = useState([]);
@@ -402,6 +763,7 @@ const FileRecordsList = ({ stats, statusFilter }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredRecords, setFilteredRecords] = useState([]);
   const [toasts, setToasts] = useState([]);
+  const [attachments, setAttachments] = useState({});
 
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [showViewerModal, setShowViewerModal] = useState(false);
@@ -409,6 +771,13 @@ const FileRecordsList = ({ stats, statusFilter }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [editRecordId, setEditRecordId] = useState(null);
+  const [showAttachmentModal, setShowAttachmentModal] = useState(false);
+  const [showAttachmentDeleteDialog, setShowAttachmentDeleteDialog] =
+    useState(false);
+  const [attachmentToDelete, setAttachmentToDelete] = useState(null);
+  const [showAttachmentViewerModal, setShowAttachmentViewerModal] =
+    useState(false);
+  const [selectedAttachment, setSelectedAttachment] = useState(null);
 
   const showToast = (message, type = "info") => {
     const id = Date.now();
@@ -419,7 +788,6 @@ const FileRecordsList = ({ stats, statusFilter }) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  // Fetch records from Firebase
   useEffect(() => {
     if (!currentUser) {
       setRecords([]);
@@ -463,21 +831,27 @@ const FileRecordsList = ({ stats, statusFilter }) => {
     return () => unsubscribe();
   }, [currentUser, userRole]);
 
-  // Filter records by search term AND status filter
+  useEffect(() => {
+    const attachmentsRef = ref(database, "attachments");
+    const unsubscribe = onValue(attachmentsRef, (snapshot) => {
+      const data = snapshot.val();
+      setAttachments(data || {});
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     let curr = [...records];
 
-    // Apply status filter first
     if (statusFilter) {
       if (statusFilter === "pending") {
         curr = curr.filter((rec) => rec.status === "Pending" || !rec.status);
       } else if (statusFilter === "completed") {
         curr = curr.filter((rec) => rec.status === "Completed");
       }
-      // If statusFilter === "all", show all records (no filtering needed)
     }
 
-    // Then apply search filter
     if (searchTerm.trim() !== "") {
       const t = searchTerm.toLowerCase();
       curr = curr.filter(
@@ -490,7 +864,6 @@ const FileRecordsList = ({ stats, statusFilter }) => {
       );
     }
 
-    // Sort by creation date
     setFilteredRecords(
       curr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     );
@@ -540,11 +913,6 @@ const FileRecordsList = ({ stats, statusFilter }) => {
     } catch (err) {
       console.error("Download error:", err);
       showToast("❌ Failed to download file", "error");
-      try {
-        window.open(record.fileURL, "_blank");
-      } catch (fallbackErr) {
-        console.error("Fallback error:", fallbackErr);
-      }
     }
   };
 
@@ -569,6 +937,87 @@ const FileRecordsList = ({ stats, statusFilter }) => {
     setRecordToDelete(null);
   };
 
+  const handleAttachmentUploadClick = (e, record) => {
+    e.stopPropagation();
+    setSelectedRecord(record);
+    setShowAttachmentModal(true);
+  };
+
+  const handleAttachmentView = (e, record) => {
+    e.stopPropagation();
+    const attachment = attachments[record.id];
+    if (attachment) {
+      setSelectedAttachment(attachment);
+      setSelectedRecord(record);
+      setShowAttachmentViewerModal(true);
+    }
+  };
+
+  const handleAttachmentDownload = async (e, record) => {
+    e.stopPropagation();
+    const attachment = attachments[record.id];
+    if (attachment && attachment.fileURL) {
+      try {
+        showToast("⏳ Preparing download...", "info");
+
+        const response = await fetch(attachment.fileURL, { mode: "cors" });
+        if (!response.ok) throw new Error("Failed to fetch file");
+
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = attachment.fileName || "attachment";
+        link.style.display = "none";
+
+        document.body.appendChild(link);
+        link.click();
+
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(blobUrl);
+        }, 100);
+
+        showToast("✅ Download completed!", "success");
+      } catch (err) {
+        console.error("Download error:", err);
+        showToast("❌ Failed to download file", "error");
+      }
+    }
+  };
+
+  const handleAttachmentDeleteClick = (e, record) => {
+    e.stopPropagation();
+    setAttachmentToDelete(record);
+    setShowAttachmentDeleteDialog(true);
+  };
+
+  const handleAttachmentDeleteConfirm = async () => {
+    if (!attachmentToDelete) return;
+
+    try {
+      const attachment = attachments[attachmentToDelete.id];
+
+      if (attachment && attachment.storagePath) {
+        const fileRef = storageRef(storage, attachment.storagePath);
+        await deleteObject(fileRef).catch((err) => {
+          console.log("File may already be deleted from storage:", err);
+        });
+      }
+
+      await remove(ref(database, `attachments/${attachmentToDelete.id}`));
+
+      showToast("✅ Attachment deleted successfully", "success");
+    } catch (error) {
+      console.error("Delete error:", error);
+      showToast("❌ Failed to delete attachment", "error");
+    }
+
+    setShowAttachmentDeleteDialog(false);
+    setAttachmentToDelete(null);
+  };
+
   const getStatusClass = (status) => {
     const s = (status || "Pending").toLowerCase();
     if (s.includes("pending")) return "s-pending";
@@ -591,7 +1040,6 @@ const FileRecordsList = ({ stats, statusFilter }) => {
     });
   };
 
-  // Get filter display text
   const getFilterText = () => {
     if (!statusFilter) return null;
     if (statusFilter === "all") return "All Files";
@@ -627,7 +1075,6 @@ const FileRecordsList = ({ stats, statusFilter }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        {/* Header */}
         <div className="records-header">
           <div className="header-left">
             <h2 className="records-title">
@@ -661,7 +1108,6 @@ const FileRecordsList = ({ stats, statusFilter }) => {
           </div>
         </div>
 
-        {/* Table Container */}
         <div className="table-container">
           {filteredRecords.length === 0 ? (
             <div className="empty-state">
@@ -678,57 +1124,176 @@ const FileRecordsList = ({ stats, statusFilter }) => {
               </p>
             </div>
           ) : (
-            <div className="table-wrapper">
-              <table className="records-table">
-                <thead>
-                  <tr>
-                    <th className="th-inward">Inward No.</th>
-                    <th className="th-subject">Subject</th>
-                    <th className="th-department">Department</th>
-                    <th className="th-date">Inward Date</th>
-                    <th className="th-allocated">Allocated To</th>
-                    <th className="th-status">Status</th>
-                    {userRole === "admin" && (
-                      <th className="th-uploader">Uploaded By</th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  <AnimatePresence>
-                    {filteredRecords.map((record, index) => (
-                      <motion.tr
+            <>
+              {/* Desktop Table View */}
+              <div className="desktop-table-view">
+                <table className="records-table">
+                  <thead>
+                    <tr>
+                      <th className="th-inward">Inward</th>
+                      <th className="th-subject">Subject</th>
+                      <th className="th-department">Dept</th>
+                      <th className="th-date">Date</th>
+                      <th className="th-allocated">Allocated</th>
+                      <th className="th-status">Status</th>
+                      {userRole === "admin" && (
+                        <th className="th-uploader">By</th>
+                      )}
+                      <th className="th-attachments">Remark / शेरा</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <AnimatePresence>
+                      {filteredRecords.map((record, index) => {
+                        const hasAttachment = attachments[record.id];
+
+                        return (
+                          <motion.tr
+                            key={record.id}
+                            className={`record-row ${
+                              record.department === "Public Representation"
+                                ? "highlight-row"
+                                : ""
+                            }`}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ delay: index * 0.02 }}
+                            onClick={() => handleRecordClick(record)}
+                            whileHover={{ backgroundColor: "#f8fafc" }}
+                          >
+                            <td className="td-inward">
+                              {record.department ===
+                                "Public Representation" && (
+                                <span className="star-icon">★</span>
+                              )}
+                              {record.inwardNumber || "N/A"}
+                            </td>
+                            <td className="td-subject" title={record.subject}>
+                              {record.subject || "Untitled"}
+                            </td>
+                            <td className="td-department">
+                              {record.department || "N/A"}
+                            </td>
+                            <td className="td-date">
+                              {formatDate(record.inwardDate)}
+                            </td>
+                            <td className="td-allocated">
+                              {record.allocatedTo || "Unassigned"}
+                            </td>
+                            <td className="td-status">
+                              <span
+                                className={`status-badge ${getStatusClass(
+                                  record.status
+                                )}`}
+                              >
+                                {record.status || "Pending"}
+                              </span>
+                            </td>
+                            {userRole === "admin" && (
+                              <td className="td-uploader">
+                                <span
+                                  className={`uploader-tag ${
+                                    record.uploaderRole === "admin"
+                                      ? "admin"
+                                      : "user"
+                                  }`}
+                                >
+                                  {record.uploaderRole === "admin"
+                                    ? "👑"
+                                    : "👤"}{" "}
+                                  {record.uploaderName ||
+                                    record.uploaderEmail ||
+                                    "Unknown"}
+                                </span>
+                              </td>
+                            )}
+                            <td className="td-attachments">
+                              <div className="attachment-buttons-group">
+                                {!hasAttachment ? (
+                                  <button
+                                    className="attachment-btn upload-btn"
+                                    onClick={(e) =>
+                                      handleAttachmentUploadClick(e, record)
+                                    }
+                                    title="Upload"
+                                  >
+                                    <Upload size={14} />
+                                  </button>
+                                ) : (
+                                  <>
+                                    <button
+                                      className="attachment-btn view-btn"
+                                      onClick={(e) =>
+                                        handleAttachmentView(e, record)
+                                      }
+                                      title="View"
+                                    >
+                                      <Eye size={14} />
+                                    </button>
+                                    <button
+                                      className="attachment-btn download-btn"
+                                      onClick={(e) =>
+                                        handleAttachmentDownload(e, record)
+                                      }
+                                      title="Download"
+                                    >
+                                      <Download size={14} />
+                                    </button>
+                                    {userRole === "admin" && (
+                                      <button
+                                        className="attachment-btn delete-btn"
+                                        onClick={(e) =>
+                                          handleAttachmentDeleteClick(e, record)
+                                        }
+                                        title="Delete"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </motion.tr>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="mobile-card-view">
+                <AnimatePresence>
+                  {filteredRecords.map((record, index) => {
+                    const hasAttachment = attachments[record.id];
+
+                    return (
+                      <motion.div
                         key={record.id}
-                        className={`record-row ${
+                        className={`record-card ${
                           record.department === "Public Representation"
-                            ? "highlight-row"
+                            ? "highlight-card"
                             : ""
                         }`}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        transition={{ delay: index * 0.02 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ delay: index * 0.05 }}
                         onClick={() => handleRecordClick(record)}
-                        whileHover={{ backgroundColor: "#f8fafc" }}
                       >
-                        <td className="td-inward">
-                          {record.department === "Public Representation" && (
-                            <span className="star-icon">★</span>
-                          )}
-                          {record.inwardNumber || "N/A"}
-                        </td>
-                        <td className="td-subject" title={record.subject}>
-                          {record.subject || "Untitled"}
-                        </td>
-                        <td className="td-department">
-                          {record.department || "N/A"}
-                        </td>
-                        <td className="td-date">
-                          {formatDate(record.inwardDate)}
-                        </td>
-                        <td className="td-allocated">
-                          {record.allocatedTo || "Unassigned"}
-                        </td>
-                        <td className="td-status">
+                        {/* Card Header */}
+                        <div className="card-header">
+                          <div className="card-inward">
+                            {record.department === "Public Representation" && (
+                              <span className="star-icon">★</span>
+                            )}
+                            <span className="inward-label">Inward:</span>
+                            <span className="inward-value">
+                              {record.inwardNumber || "N/A"}
+                            </span>
+                          </div>
                           <span
                             className={`status-badge ${getStatusClass(
                               record.status
@@ -736,32 +1301,111 @@ const FileRecordsList = ({ stats, statusFilter }) => {
                           >
                             {record.status || "Pending"}
                           </span>
-                        </td>
-                        {userRole === "admin" && (
-                          <td className="td-uploader">
-                            <span
-                              className={`uploader-tag ${
-                                record.uploaderRole === "admin"
-                                  ? "admin"
-                                  : "user"
-                              }`}
-                            >
-                              {record.uploaderRole === "admin" ? "👑" : "👤"}{" "}
-                              {record.uploaderName || "User"}
-                            </span>
-                          </td>
-                        )}
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-            </div>
+                        </div>
+
+                        {/* Card Body */}
+                        <div className="card-body">
+                          <div className="card-subject">
+                            <FileText size={14} />
+                            <span>{record.subject || "Untitled"}</span>
+                          </div>
+
+                          <div className="card-info-row">
+                            <div className="card-info-item">
+                              <Building size={12} />
+                              <span>{record.department || "N/A"}</span>
+                            </div>
+                            <div className="card-info-item">
+                              <Calendar size={12} />
+                              <span>{formatDate(record.inwardDate)}</span>
+                            </div>
+                          </div>
+
+                          <div className="card-info-row">
+                            <div className="card-info-item">
+                              <User size={12} />
+                              <span>{record.allocatedTo || "Unassigned"}</span>
+                            </div>
+                            {userRole === "admin" && record.uploaderName && (
+                              <div className="card-info-item">
+                                <span
+                                  className={`uploader-tag ${
+                                    record.uploaderRole === "admin"
+                                      ? "admin"
+                                      : "user"
+                                  }`}
+                                >
+                                  {record.uploaderRole === "admin"
+                                    ? "👑"
+                                    : "👤"}{" "}
+                                  {record.uploaderName}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Card Footer */}
+                        <div className="card-footer">
+                          <div className="card-attachment-actions">
+                            {!hasAttachment ? (
+                              <button
+                                className="card-attachment-btn upload-btn"
+                                onClick={(e) =>
+                                  handleAttachmentUploadClick(e, record)
+                                }
+                              >
+                                <Upload size={14} />
+                                <span>Upload</span>
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  className="card-attachment-btn view-btn"
+                                  onClick={(e) =>
+                                    handleAttachmentView(e, record)
+                                  }
+                                >
+                                  <Eye size={14} />
+                                  <span>View</span>
+                                </button>
+                                <button
+                                  className="card-attachment-btn download-btn"
+                                  onClick={(e) =>
+                                    handleAttachmentDownload(e, record)
+                                  }
+                                >
+                                  <Download size={14} />
+                                  <span>Download</span>
+                                </button>
+                                {userRole === "admin" && (
+                                  <button
+                                    className="card-attachment-btn delete-btn"
+                                    onClick={(e) =>
+                                      handleAttachmentDeleteClick(e, record)
+                                    }
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          <button className="card-view-details">
+                            <span>View Details</span>
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            </>
           )}
         </div>
       </motion.div>
 
-      {/* Modals */}
       <CompactRecordViewerModal
         isOpen={showViewerModal}
         onClose={() => setShowViewerModal(false)}
@@ -772,7 +1416,27 @@ const FileRecordsList = ({ stats, statusFilter }) => {
         userRole={userRole}
       />
 
-      {/* Edit Modal with Cancel Button */}
+      <AttachmentViewerModal
+        isOpen={showAttachmentViewerModal}
+        onClose={() => {
+          setShowAttachmentViewerModal(false);
+          setSelectedAttachment(null);
+        }}
+        attachment={selectedAttachment}
+        recordInfo={selectedRecord}
+        showToast={showToast}
+      />
+
+      <AttachmentUploadModal
+        isOpen={showAttachmentModal}
+        onClose={() => {
+          setShowAttachmentModal(false);
+          setSelectedRecord(null);
+        }}
+        record={selectedRecord}
+        showToast={showToast}
+      />
+
       {showEditModal && (
         <AnimatePresence>
           <motion.div
@@ -789,7 +1453,6 @@ const FileRecordsList = ({ stats, statusFilter }) => {
               exit={{ scale: 0.9 }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Close Button in Top Right Corner */}
               <button
                 className="edit-modal-close-btn"
                 onClick={handleCloseEditModal}
@@ -816,7 +1479,14 @@ const FileRecordsList = ({ stats, statusFilter }) => {
         message="Are you sure you want to delete this record? This action cannot be undone."
       />
 
-      {/* Toast Container */}
+      <ConfirmationDialog
+        isOpen={showAttachmentDeleteDialog}
+        onClose={() => setShowAttachmentDeleteDialog(false)}
+        onConfirm={handleAttachmentDeleteConfirm}
+        title="Delete Attachment"
+        message="Are you sure you want to delete this attachment? This action cannot be undone."
+      />
+
       <div className="toast-container">
         <AnimatePresence>
           {toasts.map((toast) => (
@@ -838,7 +1508,6 @@ const FileRecordsList = ({ stats, statusFilter }) => {
           transition: all 0.3s ease;
         }
 
-        /* Sidebar state adjustments */
         .main-content:not(.sidebar-collapsed) .records-section {
           max-width: calc(100vw - 280px - 4rem);
         }
@@ -951,15 +1620,20 @@ const FileRecordsList = ({ stats, statusFilter }) => {
           overflow: hidden;
         }
 
-        .table-wrapper {
+        /* Desktop Table View */
+        .desktop-table-view {
+          display: block;
           overflow-x: auto;
+        }
+
+        .mobile-card-view {
+          display: none;
         }
 
         .records-table {
           width: 100%;
           border-collapse: separate;
           border-spacing: 0;
-          min-width: 1000px;
         }
 
         .records-table thead {
@@ -970,15 +1644,25 @@ const FileRecordsList = ({ stats, statusFilter }) => {
         }
 
         .records-table th {
-          padding: 1rem 0.75rem;
+          padding: 0.9rem 0.6rem;
           text-align: left;
-          font-size: 0.85rem;
+          font-size: 0.75rem;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.05em;
           color: white;
           border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+          white-space: nowrap;
         }
+
+        .th-inward { width: 8%; }
+        .th-subject { width: 25%; }
+        .th-department { width: 12%; }
+        .th-date { width: 10%; }
+        .th-allocated { width: 12%; }
+        .th-status { width: 10%; }
+        .th-uploader { width: 8%; }
+        .th-attachments { width: 15%; text-align: center; }
 
         .records-table tbody tr {
           cursor: pointer;
@@ -999,25 +1683,30 @@ const FileRecordsList = ({ stats, statusFilter }) => {
         }
 
         .records-table td {
-          padding: 0.9rem 0.75rem;
-          font-size: 0.9rem;
+          padding: 0.8rem 0.6rem;
+          font-size: 0.85rem;
           color: #1e293b;
           border-bottom: 1px solid #e2e8f0;
         }
 
+        .td-attachments {
+          text-align: center;
+        }
+
         .star-icon {
           color: #f59e0b;
-          margin-right: 0.5rem;
-          font-size: 1rem;
+          margin-right: 0.3rem;
+          font-size: 0.9rem;
         }
 
         .td-inward {
           font-weight: 600;
           color: #0ea5e9;
+          white-space: nowrap;
         }
 
         .td-subject {
-          max-width: 250px;
+          max-width: 200px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -1026,23 +1715,26 @@ const FileRecordsList = ({ stats, statusFilter }) => {
 
         .td-department {
           font-weight: 500;
+          font-size: 0.8rem;
         }
 
         .td-date {
           color: #64748b;
-          font-size: 0.85rem;
+          font-size: 0.8rem;
+          white-space: nowrap;
         }
 
         .td-allocated {
           color: #64748b;
+          font-size: 0.8rem;
         }
 
         .status-badge {
           display: inline-flex;
           align-items: center;
-          padding: 0.35rem 0.75rem;
+          padding: 0.3rem 0.65rem;
           border-radius: 999px;
-          font-size: 0.75rem;
+          font-size: 0.7rem;
           font-weight: 600;
           border: 1px solid transparent;
           white-space: nowrap;
@@ -1093,11 +1785,11 @@ const FileRecordsList = ({ stats, statusFilter }) => {
         .uploader-tag {
           display: inline-flex;
           align-items: center;
-          padding: 0.35rem 0.75rem;
+          padding: 0.3rem 0.5rem;
           border-radius: 999px;
           font-size: 0.75rem;
           font-weight: 600;
-          gap: 0.25rem;
+          gap: 0.2rem;
           white-space: nowrap;
         }
 
@@ -1111,6 +1803,225 @@ const FileRecordsList = ({ stats, statusFilter }) => {
           background: linear-gradient(135deg, #dbeafe, #bfdbfe);
           color: #1e40af;
           border: 1px solid #60a5fa;
+        }
+
+        .attachment-buttons-group {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.35rem;
+        }
+
+        .attachment-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.4rem;
+          border: 1.5px solid;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: white;
+        }
+
+        .attachment-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .attachment-btn.upload-btn {
+          background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+          color: #1e40af;
+          border-color: #60a5fa;
+        }
+
+        .attachment-btn.view-btn {
+          background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+          color: #3730a3;
+          border-color: #818cf8;
+        }
+
+        .attachment-btn.download-btn {
+          background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+          color: #065f46;
+          border-color: #34d399;
+        }
+
+        .attachment-btn.delete-btn {
+          background: linear-gradient(135deg, #fee2e2, #fecaca);
+          color: #991b1b;
+          border-color: #f87171;
+        }
+
+        /* Mobile Card View Styles */
+        .record-card {
+          background: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 1rem;
+          margin-bottom: 1rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .record-card:hover {
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          transform: translateY(-2px);
+        }
+
+        .record-card.highlight-card {
+          background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+          border-color: #fbbf24;
+        }
+
+        .card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 0.75rem;
+          padding-bottom: 0.75rem;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .card-inward {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          flex-wrap: wrap;
+        }
+
+        .inward-label {
+          font-size: 0.7rem;
+          color: #64748b;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
+
+        .inward-value {
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: #0ea5e9;
+        }
+
+        .card-body {
+          display: flex;
+          flex-direction: column;
+          gap: 0.6rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .card-subject {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: #1e293b;
+          line-height: 1.4;
+        }
+
+        .card-subject svg {
+          flex-shrink: 0;
+          margin-top: 0.1rem;
+        }
+
+        .card-info-row {
+          display: flex;
+          justify-content: space-between;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .card-info-item {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          font-size: 0.75rem;
+          color: #64748b;
+        }
+
+        .card-info-item svg {
+          flex-shrink: 0;
+        }
+
+        .card-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 0.5rem;
+          padding-top: 0.75rem;
+          border-top: 1px solid #e2e8f0;
+        }
+
+        .card-attachment-actions {
+          display: flex;
+          gap: 0.4rem;
+          flex-wrap: wrap;
+        }
+
+        .card-attachment-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.45rem 0.7rem;
+          border: 1.5px solid;
+          border-radius: 8px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+        }
+
+        .card-attachment-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-attachment-btn.upload-btn {
+          background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+          color: #1e40af;
+          border-color: #60a5fa;
+        }
+
+        .card-attachment-btn.view-btn {
+          background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+          color: #3730a3;
+          border-color: #818cf8;
+        }
+
+        .card-attachment-btn.download-btn {
+          background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+          color: #065f46;
+          border-color: #34d399;
+        }
+
+        .card-attachment-btn.delete-btn {
+          background: linear-gradient(135deg, #fee2e2, #fecaca);
+          color: #991b1b;
+          border-color: #f87171;
+          padding: 0.45rem;
+        }
+
+        .card-view-details {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+          padding: 0.45rem 0.7rem;
+          background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+          color: #475569;
+          border: none;
+          border-radius: 8px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .card-view-details:hover {
+          background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+          transform: translateX(2px);
         }
 
         .empty-state {
@@ -1149,6 +2060,427 @@ const FileRecordsList = ({ stats, statusFilter }) => {
 
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+
+        /* Attachment Viewer Modal */
+        .attachment-viewer-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: blur(8px);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 4600;
+          padding: 1rem;
+        }
+
+        .attachment-viewer-modal {
+          background: white;
+          border-radius: 16px;
+          width: 100%;
+          max-width: 1000px;
+          max-height: 95vh;
+          overflow: hidden;
+          box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
+          display: flex;
+          flex-direction: column;
+        }
+
+        .attachment-viewer-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.25rem 1.5rem;
+          border-bottom: 2px solid #e2e8f0;
+          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+          flex-shrink: 0;
+        }
+
+        .attachment-viewer-title {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.75rem;
+        }
+
+        .attachment-viewer-title h3 {
+          margin: 0;
+          font-size: 1.3rem;
+          font-weight: 700;
+          color: #1e293b;
+        }
+
+        .attachment-viewer-subtitle {
+          margin: 0.25rem 0 0 0;
+          font-size: 0.85rem;
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        .attachment-viewer-subtitle strong {
+          color: #0ea5e9;
+        }
+
+        .attachment-viewer-close-btn {
+          background: #f1f5f9;
+          border: none;
+          border-radius: 8px;
+          padding: 0.6rem;
+          cursor: pointer;
+          color: #64748b;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .attachment-viewer-close-btn:hover {
+          background: #e2e8f0;
+          color: #334155;
+        }
+
+        .attachment-file-info {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+          padding: 1rem 1.5rem;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .file-info-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.85rem;
+          color: #64748b;
+        }
+
+        .file-info-label {
+          font-weight: 600;
+        }
+
+        .file-info-value {
+          color: #1e293b;
+          font-weight: 500;
+        }
+
+        .attachment-viewer-actions {
+          padding: 1rem 1.5rem;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .attachment-download-action-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1.5rem;
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .attachment-download-action-btn:hover {
+          background: linear-gradient(135deg, #059669, #047857);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .attachment-viewer-content {
+          flex: 1;
+          overflow-y: auto;
+          padding: 1.5rem;
+          background: #ffffff;
+        }
+
+        .attachment-preview-container {
+          background: #f8fafc;
+          border-radius: 12px;
+          overflow: hidden;
+          border: 2px solid #e2e8f0;
+          min-height: 400px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .attachment-preview-image {
+          max-width: 100%;
+          height: auto;
+          max-height: 70vh;
+          object-fit: contain;
+        }
+
+        .attachment-preview-iframe {
+          width: 100%;
+          height: 70vh;
+          border: none;
+        }
+
+        .attachment-no-preview {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 3rem 2rem;
+          color: #64748b;
+          text-align: center;
+        }
+
+        .attachment-no-preview svg {
+          margin-bottom: 1rem;
+          color: #94a3b8;
+        }
+
+        .no-preview-title {
+          margin: 0 0 0.5rem 0;
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .no-preview-text {
+          margin: 0 0 1.5rem 0;
+          color: #64748b;
+        }
+
+        .no-preview-download-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1.5rem;
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .no-preview-download-btn:hover {
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Attachment Upload Modal */
+        .attachment-upload-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(6px);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 4500;
+          padding: 1rem;
+        }
+
+        .attachment-upload-modal {
+          background: white;
+          border-radius: 16px;
+          width: 100%;
+          max-width: 600px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .attachment-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.25rem 1.5rem;
+          border-bottom: 2px solid #e2e8f0;
+          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+        }
+
+        .attachment-header-title {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.75rem;
+        }
+
+        .attachment-header-title h3 {
+          margin: 0;
+          font-size: 1.3rem;
+          font-weight: 700;
+          color: #1e293b;
+        }
+
+        .attachment-subtitle {
+          margin: 0.25rem 0 0 0;
+          font-size: 0.85rem;
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        .attachment-subtitle strong {
+          color: #0ea5e9;
+        }
+
+        .attachment-close-btn {
+          background: #f1f5f9;
+          border: none;
+          border-radius: 8px;
+          padding: 0.6rem;
+          cursor: pointer;
+          color: #64748b;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .attachment-close-btn:hover {
+          background: #e2e8f0;
+          color: #334155;
+        }
+
+        .attachment-upload-section {
+          padding: 1.5rem;
+        }
+
+        .attachment-upload-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .file-input-wrapper {
+          position: relative;
+        }
+
+        .file-input-hidden {
+          display: none;
+        }
+
+        .file-input-label {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 1.2rem 1.5rem;
+          background: white;
+          border: 2px dashed #cbd5e1;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          color: #64748b;
+          font-weight: 500;
+          font-size: 0.95rem;
+        }
+
+        .file-input-label:hover {
+          border-color: #60a5fa;
+          background: #f8fafc;
+          color: #1e40af;
+        }
+
+        .selected-file-info {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.9rem 1.2rem;
+          background: #ecfdf5;
+          border: 1.5px solid #a7f3d0;
+          border-radius: 10px;
+          color: #065f46;
+          font-size: 0.9rem;
+          font-weight: 500;
+        }
+
+        .file-size-text {
+          margin-left: auto;
+          color: #059669;
+          font-weight: 600;
+        }
+
+        .file-type-text {
+          color: #10b981;
+          font-size: 0.8rem;
+        }
+
+        .upload-progress-bar {
+          position: relative;
+          height: 36px;
+          background: #e2e8f0;
+          border-radius: 10px;
+          overflow: hidden;
+        }
+
+        .upload-progress-fill {
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 100%;
+          background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+          transition: width 0.3s ease;
+        }
+
+        .upload-progress-text {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 0.9rem;
+          font-weight: 700;
+          color: #1e293b;
+          z-index: 1;
+        }
+
+        .upload-actions {
+          display: flex;
+          gap: 0.75rem;
+          margin-top: 0.5rem;
+        }
+
+        .upload-cancel-btn {
+          flex: 1;
+          padding: 0.85rem 1.5rem;
+          background: #f1f5f9;
+          color: #64748b;
+          border: none;
+          border-radius: 10px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .upload-cancel-btn:hover:not(:disabled) {
+          background: #e2e8f0;
+          color: #334155;
+        }
+
+        .upload-cancel-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .upload-submit-btn {
+          flex: 2;
+          padding: 0.85rem 1.5rem;
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .upload-submit-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #2563eb, #7c3aed);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .upload-submit-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         /* Compact Viewer Modal */
@@ -1555,7 +2887,6 @@ const FileRecordsList = ({ stats, statusFilter }) => {
           position: relative;
         }
 
-        /* Edit Modal Close Button */
         .edit-modal-close-btn {
           position: absolute;
           top: 1rem;
@@ -1635,50 +2966,44 @@ const FileRecordsList = ({ stats, statusFilter }) => {
           background: rgba(255, 255, 255, 0.3);
         }
 
-        /* Responsive Design */
-        
-        /* Desktop & Large Tablet (1024px+) - Sidebar-aware */
-        @media (min-width: 1024px) {
-          .main-content:not(.sidebar-collapsed) .records-section {
-            max-width: calc(100vw - 280px - 4rem);
-          }
+        /* ========== MOBILE RESPONSIVE STYLES ========== */
 
-          .main-content.sidebar-collapsed .records-section {
-            max-width: calc(100vw - 80px - 4rem);
-          }
-        }
-
-        /* Tablet adjustments */
         @media (max-width: 1024px) {
+          .records-section {
+            padding: 0.75rem;
+          }
+
           .compact-info-grid {
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
           }
-
-          /* Sidebar-aware on tablets 768px+ */
-          @media (min-width: 768px) {
-            .main-content:not(.sidebar-collapsed) .records-section {
-              max-width: calc(100vw - 280px - 3rem);
-            }
-
-            .main-content.sidebar-collapsed .records-section {
-              max-width: calc(100vw - 80px - 3rem);
-            }
-          }
         }
 
-        /* Mobile & Small Tablet (max-width: 767px) - No sidebar margin */
         @media (max-width: 768px) {
-          /* Reset for mobile - ignore sidebar */
+          /* Switch to mobile card view */
+          .desktop-table-view {
+            display: none;
+          }
+
+          .mobile-card-view {
+            display: block;
+            padding: 0.5rem;
+          }
+
+          /* Reset sidebar margin on mobile */
           .main-content .records-section,
           .main-content.sidebar-collapsed .records-section,
           .main-content:not(.sidebar-collapsed) .records-section {
             margin-left: 0 !important;
             max-width: 100% !important;
+            padding: 0.5rem;
           }
 
+          /* Header adjustments */
           .records-header {
             flex-direction: column;
             align-items: stretch;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
           }
 
           .header-left {
@@ -1687,73 +3012,13 @@ const FileRecordsList = ({ stats, statusFilter }) => {
             gap: 0.5rem;
           }
 
-          .search-wrapper {
-            width: 100%;
-          }
-
-          .records-search {
-            width: 100%;
-          }
-
-          .table-wrapper {
-            overflow-x: auto;
-          }
-
-          .compact-viewer-modal {
-            width: 98%;
-            max-height: 95vh;
-          }
-
-          .compact-viewer-header {
-            padding: 1rem;
-          }
-
-          .header-title-section h3 {
-            font-size: 1.1rem;
-          }
-
-          .compact-action-buttons {
-            padding: 0.75rem 1rem;
-            flex-direction: column;
-          }
-
-          .compact-btn {
-            width: 100%;
-            min-width: auto;
-          }
-
-          .compact-viewer-body {
-            padding: 1rem;
-          }
-
-          .compact-info-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .compact-preview-iframe,
-          .compact-preview-image {
-            max-height: 300px;
-          }
-
-          .dialog-content {
-            width: 95%;
-          }
-
-          .edit-modal {
-            max-width: 98%;
-          }
-
-          .edit-modal-close-btn {
-            top: 0.5rem;
-            right: 0.5rem;
-            width: 36px;
-            height: 36px;
-          }
-        }
-
-        @media (max-width: 480px) {
           .records-title {
-            font-size: 1.2rem;
+            font-size: 1.25rem;
+          }
+
+          .records-title svg {
+            width: 20px;
+            height: 20px;
           }
 
           .records-count {
@@ -1766,30 +3031,186 @@ const FileRecordsList = ({ stats, statusFilter }) => {
             padding: 0.3rem 0.7rem;
           }
 
-          .compact-viewer-header {
-            padding: 0.75rem 1rem;
+          /* Search bar */
+          .search-wrapper {
+            width: 100%;
           }
 
-          .header-title-section h3 {
+          .records-search {
+            width: 100%;
+            font-size: 0.9rem;
+            padding: 0.6rem 1rem 0.6rem 2.5rem;
+          }
+
+          .search-wrapper svg {
+            left: 0.75rem;
+            width: 16px;
+            height: 16px;
+          }
+
+          /* Modals */
+          .compact-viewer-modal,
+          .attachment-viewer-modal,
+          .attachment-upload-modal {
+            width: 95%;
+            max-height: 92vh;
+            margin: 0.5rem;
+          }
+
+          .compact-viewer-header,
+          .attachment-viewer-header,
+          .attachment-modal-header {
+            padding: 0.85rem 1rem;
+          }
+
+          .header-title-section h3,
+          .attachment-viewer-title h3,
+          .attachment-header-title h3 {
             font-size: 1rem;
           }
 
           .compact-action-buttons {
+            padding: 0.75rem 1rem;
             gap: 0.5rem;
           }
 
           .compact-btn {
-            padding: 0.6rem 1rem;
+            padding: 0.65rem 1rem;
             font-size: 0.85rem;
+            min-width: auto;
+          }
+
+          .compact-viewer-body {
+            padding: 1rem;
           }
 
           .compact-preview-container {
             min-height: 200px;
           }
 
-          .edit-modal-close-btn {
-            width: 32px;
-            height: 32px;
+          .compact-preview-iframe,
+          .attachment-preview-iframe {
+            height: 300px;
+          }
+
+          .compact-info-grid {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+          }
+
+          .attachment-file-info {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+          }
+
+          .attachment-viewer-actions {
+            padding: 0.75rem 1rem;
+          }
+
+          .attachment-download-action-btn {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .attachment-upload-section {
+            padding: 1rem;
+          }
+
+          .upload-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+
+          .upload-cancel-btn,
+          .upload-submit-btn {
+            width: 100%;
+          }
+
+          .dialog-content {
+            width: 95%;
+          }
+
+          .dialog-actions {
+            flex-direction: column-reverse;
+            gap: 0.5rem;
+          }
+
+          .dialog-btn {
+            width: 100%;
+          }
+
+          .edit-modal {
+            max-width: 98%;
+          }
+
+          .toast-container {
+            bottom: 10px;
+            right: 10px;
+            left: 10px;
+          }
+
+          .toast-notification {
+            min-width: auto;
+            max-width: 100%;
+          }
+
+          .empty-state {
+            padding: 2rem 1rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .records-section {
+            padding: 0.35rem;
+          }
+
+          .mobile-card-view {
+            padding: 0.25rem;
+          }
+
+          .record-card {
+            padding: 0.85rem;
+          }
+
+          .card-subject {
+            font-size: 0.85rem;
+          }
+
+          .card-info-item {
+            font-size: 0.7rem;
+          }
+
+          .card-attachment-btn {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.7rem;
+          }
+
+          .card-view-details {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.7rem;
+          }
+
+          .status-badge {
+            font-size: 0.65rem;
+            padding: 0.25rem 0.55rem;
+          }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+          .attachment-btn,
+          .card-attachment-btn,
+          .compact-btn,
+          .dialog-btn,
+          .upload-cancel-btn,
+          .upload-submit-btn {
+            min-height: 44px;
+            touch-action: manipulation;
+          }
+
+          .record-card {
+            touch-action: manipulation;
           }
         }
       `}</style>

@@ -76,6 +76,7 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Menu,
 } from "lucide-react";
 
 // ============================================================
@@ -1595,6 +1596,7 @@ const Dashboard = () => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar state
   const [stats, setStats] = useState({
     totalFiles: 0,
     pendingFiles: 0,
@@ -1702,6 +1704,17 @@ const Dashboard = () => {
   const handleClearFilter = () => {
     setStatusFilter(null);
     success("Filter cleared");
+  };
+
+  /**
+   * Close mobile sidebar when clicking outside or changing tabs
+   */
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSidebarOpen(false); // Close mobile menu when tab changes
+    if (tab !== "RecordsView") {
+      setStatusFilter(null);
+    }
   };
 
   // Animation variants for stat cards
@@ -1957,7 +1970,7 @@ const Dashboard = () => {
             stats={stats}
             files={files}
             loading={loading}
-            setActiveTab={setActiveTab}
+            setActiveTab={handleTabChange}
             onStatCardClick={handleStatCardClick}
           />
         );
@@ -2057,7 +2070,7 @@ const Dashboard = () => {
             stats={stats}
             files={files}
             loading={loading}
-            setActiveTab={setActiveTab}
+            setActiveTab={handleTabChange}
             onStatCardClick={handleStatCardClick}
           />
         );
@@ -2066,36 +2079,70 @@ const Dashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[998] lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar Navigation */}
-      <Sidebar
-        userRole={userRole}
-        userName={userName}
-        currentUser={currentUser}
-        activeTab={activeTab}
-        setActiveTab={(tab) => {
-          setActiveTab(tab);
-          if (tab !== "RecordsView") {
-            setStatusFilter(null);
-          }
-        }}
-        onLogoutClick={() => setLogoutDialogOpen(true)}
-      />
+      <motion.div
+        className={`
+          fixed lg:sticky top-0 left-0 h-screen z-[999]
+          lg:translate-x-0 transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+        initial={false}
+      >
+        <Sidebar
+          userRole={userRole}
+          userName={userName}
+          currentUser={currentUser}
+          activeTab={activeTab}
+          setActiveTab={handleTabChange}
+          onLogoutClick={() => setLogoutDialogOpen(true)}
+        />
+      </motion.div>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="bg-white/80 backdrop-blur-sm border-b border-purple-100 px-4 md:px-6 lg:px-8 py-3 md:py-4 sticky top-0 z-10 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <header className="bg-white/80 backdrop-blur-sm border-b border-purple-100 px-4 md:px-6 lg:px-8 py-3 md:py-4 sticky top-0 z-[997] shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            {/* Mobile Menu Button */}
+            <button
+              className="lg:hidden p-2 hover:bg-purple-100 rounded-lg transition-colors"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu size={24} className="text-purple-600" />
+            </button>
+
+            {/* Dashboard Title */}
             <h1 className="flex items-center gap-2 md:gap-3 text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              <LayoutDashboard className="text-purple-600" size={24} />
+              <LayoutDashboard className="text-purple-600 hidden sm:block" size={24} />
               <span className="hidden sm:inline">Dashboard</span>
             </h1>
-            <p className="text-sm md:text-base text-gray-600">
+
+            {/* User Welcome */}
+            <p className="text-sm md:text-base text-gray-600 hidden sm:block">
               Welcome back,{" "}
               <strong className="text-gray-800">
                 {userName || currentUser?.email?.split("@")[0]}
               </strong>
             </p>
+
+            {/* Mobile User Initial Avatar */}
+            <div className="sm:hidden flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 text-white font-bold text-sm">
+              {(userName || currentUser?.email || "U")[0].toUpperCase()}
+            </div>
           </div>
         </header>
 

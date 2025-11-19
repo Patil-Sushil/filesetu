@@ -1,6 +1,6 @@
 /* ============================================================
-   DASHBOARD.CSS - COMPLETE RESPONSIVE DESIGN SYSTEM
-   Modern Light Theme with Smooth Animations
+   DASHBOARD.CSS - COMPLETE RESPONSIVE MOBILE-FIRST DESIGN
+   Modern Light Theme with Mobile Menu & Optimized UX
    ============================================================ */
 
 /* ============================================================
@@ -115,6 +115,7 @@
   --z-modal: 1050;
   --z-popover: 1060;
   --z-tooltip: 1070;
+  --z-mobile-menu: 1080;
   --z-toast: 9999;
 
   /* Typography */
@@ -147,6 +148,12 @@ body {
   min-height: 100vh;
   line-height: 1.6;
   overflow-x: hidden;
+}
+
+body.mobile-menu-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
 }
 
 button {
@@ -293,14 +300,14 @@ a {
 
 .line-clamp-2 {
   display: -webkit-box;
-  
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .line-clamp-3 {
   display: -webkit-box;
- 
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -387,6 +394,11 @@ a {
   flex-direction: column;
   gap: 0.75rem;
   max-width: 420px;
+  pointer-events: none;
+}
+
+.toast-container > * {
+  pointer-events: auto;
 }
 
 .toast {
@@ -957,6 +969,7 @@ a {
   display: flex;
   min-height: 100vh;
   background: linear-gradient(135deg, #fef3c7 0%, #e9d5ff 50%, #fce7f3 100%);
+  position: relative;
 }
 
 .main-content {
@@ -964,6 +977,89 @@ a {
   display: flex;
   flex-direction: column;
   transition: all var(--transition-normal);
+  min-width: 0;
+}
+
+/* ============================================================
+   MOBILE MENU OVERLAY & HAMBURGER
+   ============================================================ */
+.mobile-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: var(--z-mobile-menu);
+  display: none;
+}
+
+.mobile-menu-button {
+  display: none;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: var(--purple-100);
+  border-radius: 10px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  z-index: calc(var(--z-mobile-menu) + 2);
+}
+
+.mobile-menu-button:hover {
+  background: var(--purple-200);
+  transform: scale(1.05);
+}
+
+.mobile-menu-button:active {
+  transform: scale(0.95);
+}
+
+.hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 24px;
+}
+
+.hamburger-icon span {
+  display: block;
+  width: 100%;
+  height: 3px;
+  background: var(--purple-600);
+  border-radius: 3px;
+  transform-origin: center;
+}
+
+/* Sidebar Mobile Styles */
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  background: white;
+  box-shadow: var(--shadow-xl);
+  z-index: calc(var(--z-mobile-menu) + 1);
+  overflow-y: auto;
+  transition: transform var(--transition-normal);
+}
+
+/* Show mobile menu on desktop */
+@media (min-width: 1024px) {
+  .sidebar {
+    position: relative;
+    transform: translateX(0) !important;
+  }
+  
+  .mobile-menu-overlay {
+    display: none !important;
+  }
+  
+  .mobile-menu-button {
+    display: none !important;
+  }
 }
 
 /* ============================================================
@@ -972,7 +1068,7 @@ a {
 .top-header {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  padding: 1.5rem 2rem;
+  padding: 1rem 1.5rem;
   border-bottom: 2px solid var(--purple-100);
   box-shadow: var(--shadow-sm);
   position: sticky;
@@ -987,25 +1083,35 @@ a {
   gap: 1rem;
 }
 
-.header-left h1 {
+.header-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.header-title {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin: 0 0 0.5rem 0;
-  font-size: 1.75rem;
+  margin: 0 0 0.25rem 0;
+  font-size: 1.5rem;
   background: linear-gradient(135deg, var(--purple-500), var(--pink-500));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.header-left p {
-  margin: 0;
-  color: var(--gray-600);
-  font-size: 0.95rem;
+.header-icon {
+  color: var(--purple-600);
+  flex-shrink: 0;
 }
 
-.header-left strong {
+.header-subtitle {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 0.875rem;
+}
+
+.header-subtitle strong {
   color: var(--purple-600);
   font-weight: 700;
 }
@@ -1015,8 +1121,9 @@ a {
    ============================================================ */
 .dashboard-main {
   flex: 1;
-  padding: 2rem;
+  padding: 1.5rem;
   overflow-y: auto;
+  position: relative;
 }
 
 /* ============================================================
@@ -1103,6 +1210,7 @@ a {
 
 .stat-info {
   flex: 1;
+  min-width: 0;
 }
 
 .stat-number {
@@ -1223,6 +1331,7 @@ a {
 
 .action-content {
   flex: 1;
+  min-width: 0;
 }
 
 .action-title {
@@ -1259,6 +1368,7 @@ a {
 .portfolio-header-left,
 .compact-header-left {
   flex: 1;
+  min-width: 0;
 }
 
 .portfolio-header-left h2,
@@ -1544,504 +1654,8 @@ a {
 }
 
 /* ============================================================
-   IMAGE PREVIEW
-   ============================================================ */
-.image-preview-container {
-  max-width: 90vw;
-  max-height: 90vh;
-  position: relative;
-  background: white;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: var(--shadow-xl);
-}
-
-.image-preview-container img {
-  max-width: 100%;
-  max-height: 90vh;
-  display: block;
-  object-fit: contain;
-}
-
-.btn-close-preview {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--gray-700);
-  padding: 0.75rem;
-  border-radius: 10px;
-  box-shadow: var(--shadow-md);
-  z-index: 10;
-}
-
-.btn-close-preview:hover {
-  background: white;
-}
-
-/* ============================================================
-   ACCESS DENIED
-   ============================================================ */
-.access-denied {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: var(--shadow-md);
-  color: var(--red-500);
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-/* ============================================================
-   RESPONSIVE DESIGN - MOBILE FIRST
-   ============================================================ */
-
-/* Large Desktop (1200px+) */
-@media (min-width: 1200px) {
-  .stats-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-/* Desktop (1024px - 1199px) */
-@media (max-width: 1199px) {
-  .stats-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* Tablet Landscape (768px - 1023px) */
-@media (max-width: 1023px) {
-  .dashboard-main {
-    padding: 1.5rem;
-  }
-
-  .top-header {
-    padding: 1.25rem 1.5rem;
-  }
-
-  .header-left h1 {
-    font-size: 1.5rem;
-  }
-
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-
-  .stat-card {
-    padding: 1.5rem;
-  }
-
-  .stat-icon {
-    width: 56px;
-    height: 56px;
-    font-size: 1.75rem;
-  }
-
-  .stat-number {
-    font-size: 1.75rem;
-  }
-
-  .portfolio-header,
-  .compact-header {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .btn-upload-primary,
-  .btn-add-compact {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .compact-doc-card {
-    grid-template-columns: auto 1fr auto;
-    gap: 0.85rem;
-    padding: 1rem;
-  }
-
-  .action-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-}
-
-/* Tablet Portrait (600px - 767px) */
-@media (max-width: 767px) {
-  .dashboard-main {
-    padding: 1rem;
-  }
-
-  .top-header {
-    padding: 1rem;
-  }
-
-  .header-left h1 {
-    font-size: 1.35rem;
-    gap: 0.5rem;
-  }
-
-  .header-left p {
-    font-size: 0.875rem;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .stat-card {
-    padding: 1.25rem;
-  }
-
-  .action-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .action-card {
-    padding: 1.25rem;
-  }
-
-  .quick-actions,
-  .documents-container {
-    padding: 1.5rem;
-  }
-
-  .portfolio-search-bar {
-    padding: 0.65rem 1rem;
-  }
-
-  .compact-doc-card {
-    grid-template-columns: auto 1fr;
-    gap: 0.75rem;
-    padding: 0.85rem 1rem;
-  }
-
-  .compact-doc-date {
-    grid-column: 2 / -1;
-    justify-self: start;
-    margin-top: 0.25rem;
-  }
-
-  .compact-doc-menu {
-    grid-row: 1;
-    grid-column: 3;
-  }
-
-  .toast-container {
-    bottom: 1rem;
-    right: 1rem;
-    left: 1rem;
-    max-width: none;
-  }
-
-  .toast {
-    min-width: auto;
-  }
-
-  .doc-actions-buttons {
-    grid-template-columns: 1fr;
-    gap: 0.65rem;
-  }
-
-  .action-btn {
-    padding: 1.1rem;
-    flex-direction: row;
-    justify-content: center;
-  }
-
-  .upload-modal-content,
-  .dialog-content,
-  .doc-actions-modal {
-    max-width: 95%;
-    margin: 1rem;
-  }
-
-  .upload-modal-header,
-  .dialog-header {
-    padding: 1.25rem;
-  }
-
-  .upload-form,
-  .dialog-body {
-    padding: 1.25rem;
-  }
-
-  .upload-modal-footer,
-  .dialog-footer {
-    padding: 1rem 1.25rem;
-    flex-direction: column;
-  }
-
-  .btn-submit-upload,
-  .btn-cancel-upload,
-  .btn-secondary,
-  .btn-danger,
-  .btn-primary {
-    width: 100%;
-  }
-
-  .compact-dairy-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Mobile (480px - 599px) */
-@media (max-width: 599px) {
-  .dashboard-main {
-    padding: 0.85rem;
-  }
-
-  .top-header {
-    padding: 0.85rem;
-  }
-
-  .header-left h1 {
-    font-size: 1.25rem;
-  }
-
-  .stat-card {
-    padding: 1rem;
-    gap: 1rem;
-  }
-
-  .stat-icon {
-    width: 52px;
-    height: 52px;
-    font-size: 1.5rem;
-  }
-
-  .stat-number {
-    font-size: 1.5rem;
-  }
-
-  .stat-label {
-    font-size: 0.85rem;
-  }
-
-  .quick-actions,
-  .documents-container {
-    padding: 1.25rem;
-    border-radius: 12px;
-  }
-
-  .quick-actions h3 {
-    font-size: 1.1rem;
-  }
-
-  .action-card {
-    padding: 1rem;
-  }
-
-  .action-icon {
-    width: 42px;
-    height: 42px;
-    font-size: 1.35rem;
-  }
-
-  .compact-doc-card {
-    padding: 0.75rem 0.85rem;
-  }
-
-  .compact-doc-icon {
-    font-size: 1.75rem;
-  }
-
-  .compact-doc-info h4 {
-    font-size: 0.95rem;
-  }
-
-  .portfolio-header-left h2,
-  .compact-header-left h2 {
-    font-size: 1.5rem;
-  }
-}
-
-/* Small Mobile (< 480px) */
-@media (max-width: 479px) {
-  .top-header {
-    padding: 0.75rem;
-  }
-
-  .header-left h1 {
-    font-size: 1.15rem;
-  }
-
-  .header-left p {
-    font-size: 0.8rem;
-  }
-
-  .dashboard-main {
-    padding: 0.75rem;
-  }
-
-  .quick-actions,
-  .documents-container {
-    padding: 1rem;
-  }
-
-  .stat-card {
-    padding: 0.85rem;
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .stat-info {
-    text-align: center;
-  }
-
-  .portfolio-search-bar {
-    padding: 0.6rem 0.85rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .portfolio-search-bar input {
-    font-size: 0.9rem;
-  }
-
-  .toast-container {
-    bottom: 0.75rem;
-    right: 0.75rem;
-    left: 0.75rem;
-  }
-
-  .toast {
-    padding: 0.85rem 1rem;
-  }
-
-  .toast-message {
-    font-size: 0.875rem;
-  }
-
-  .form-field input,
-  .form-field select,
-  .form-field textarea,
-  .form-group-compact input,
-  .form-group-compact textarea {
-    font-size: 16px; /* Prevents zoom on iOS */
-  }
-
-  .upload-modal-content,
-  .doc-actions-modal {
-    margin: 0.5rem;
-    max-height: 95vh;
-  }
-
-  .btn-submit-upload,
-  .btn-cancel-upload {
-    padding: 0.65rem 1rem;
-    font-size: 0.9rem;
-  }
-
-  .stat-click-hint {
-    display: none;
-  }
-}
-
-/* Extra Small Mobile (< 360px) */
-@media (max-width: 359px) {
-  .dashboard-main {
-    padding: 0.5rem;
-  }
-
-  .header-left h1 {
-    font-size: 1.05rem;
-  }
-
-  .stat-number {
-    font-size: 1.35rem;
-  }
-
-  .compact-doc-card {
-    padding: 0.65rem 0.75rem;
-  }
-
-  .action-card {
-    padding: 0.85rem;
-  }
-
-  .quick-actions,
-  .documents-container {
-    padding: 0.85rem;
-  }
-}
-
-/* ============================================================
-   ACCESSIBILITY
-   ============================================================ */
-
-/* Reduced Motion Support */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* Focus Styles */
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible,
-a:focus-visible {
-  outline: 3px solid var(--purple-400);
-  outline-offset: 2px;
-}
-
-/* High Contrast Mode Support */
-@media (prefers-contrast: high) {
-  .stat-card,
-  .action-card,
-  .compact-doc-card {
-    border-width: 3px;
-  }
-
-  button {
-    border: 2px solid currentColor;
-  }
-}
-
-/* ============================================================
-   PRINT STYLES
-   ============================================================ */
-@media print {
-  .toast-container,
-  .btn-upload-primary,
-  .btn-add-compact,
-  .btn-close-preview,
-  .compact-doc-menu,
-  .action-card,
-  .portfolio-search-bar {
-    display: none !important;
-  }
-
-  .dashboard-container {
-    background: white !important;
-  }
-
-  .stat-card,
-  .compact-doc-card,
-  .compact-dairy-card {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  body {
-    background: white !important;
-  }
-}
-
-/* ============================================================
    DOCUMENT VIEWER MODAL STYLES
    ============================================================ */
-
 .document-viewer-modal {
   position: fixed;
   inset: 0;
@@ -2298,10 +1912,222 @@ a:focus-visible {
 }
 
 /* ============================================================
-   RESPONSIVE VIEWER STYLES
+   ACCESS DENIED
+   ============================================================ */
+.access-denied {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  color: var(--red-500);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN - MOBILE FIRST
    ============================================================ */
 
-@media (max-width: 768px) {
+/* Tablet and Below (< 1024px) - Show Mobile Menu */
+@media (max-width: 1023px) {
+  .mobile-menu-overlay {
+    display: block;
+  }
+
+  .mobile-menu-button {
+    display: flex;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .dashboard-main {
+    padding: 1.25rem;
+  }
+
+  .top-header {
+    padding: 1rem 1.25rem;
+  }
+
+  .header-title {
+    font-size: 1.35rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .stat-card {
+    padding: 1.25rem;
+  }
+
+  .stat-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 1.75rem;
+  }
+
+  .stat-number {
+    font-size: 1.75rem;
+  }
+
+  .portfolio-header,
+  .compact-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .btn-upload-primary,
+  .btn-add-compact {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .action-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .compact-doc-card {
+    grid-template-columns: auto 1fr auto;
+    gap: 0.85rem;
+    padding: 1rem;
+  }
+}
+
+/* Mobile Portrait (< 768px) */
+@media (max-width: 767px) {
+  .dashboard-main {
+    padding: 1rem;
+  }
+
+  .top-header {
+    padding: 0.875rem 1rem;
+  }
+
+  .header-title {
+    font-size: 1.25rem;
+    gap: 0.5rem;
+  }
+
+  .header-title-text {
+    display: none;
+  }
+
+  .header-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .stat-card {
+    padding: 1.25rem;
+  }
+
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-card {
+    padding: 1.25rem;
+  }
+
+  .quick-actions,
+  .documents-container {
+    padding: 1.25rem;
+  }
+
+  .portfolio-search-bar {
+    padding: 0.65rem 1rem;
+  }
+
+  .compact-doc-card {
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+  }
+
+  .compact-doc-date {
+    grid-column: 2 / -1;
+    justify-self: start;
+    margin-top: 0.25rem;
+  }
+
+  .compact-doc-menu {
+    grid-row: 1;
+    grid-column: 3;
+  }
+
+  .toast-container {
+    bottom: 1rem;
+    right: 1rem;
+    left: 1rem;
+    max-width: none;
+  }
+
+  .toast {
+    min-width: auto;
+  }
+
+  .doc-actions-buttons {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .action-btn {
+    padding: 1.1rem;
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .upload-modal-content,
+  .dialog-content,
+  .doc-actions-modal {
+    max-width: 95%;
+    margin: 0.75rem;
+  }
+
+  .upload-modal-header,
+  .dialog-header {
+    padding: 1.25rem;
+  }
+
+  .upload-form,
+  .dialog-body {
+    padding: 1.25rem;
+  }
+
+  .upload-modal-footer,
+  .dialog-footer {
+    padding: 1rem 1.25rem;
+    flex-direction: column-reverse;
+  }
+
+  .btn-submit-upload,
+  .btn-cancel-upload,
+  .btn-secondary,
+  .btn-danger,
+  .btn-primary {
+    width: 100%;
+  }
+
+  .compact-dairy-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Viewer Mobile Adjustments */
   .viewer-zoom-controls {
     display: none;
   }
@@ -2326,18 +2152,149 @@ a:focus-visible {
     font-size: 0.75rem;
   }
 
-  .viewer-image-container {
-    padding: 0.5rem;
-  }
-
   .viewer-pdf-container,
   .viewer-text-container {
     height: 60vh;
     padding: 0.5rem;
   }
+}
+
+/* Small Mobile (< 480px) */
+@media (max-width: 479px) {
+  .dashboard-main {
+    padding: 0.75rem;
+  }
+
+  .top-header {
+    padding: 0.75rem;
+  }
+
+  .header-title {
+    font-size: 1.15rem;
+  }
+
+  .header-subtitle {
+    font-size: 0.75rem;
+  }
+
+  .mobile-menu-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .hamburger-icon {
+    width: 20px;
+    gap: 4px;
+  }
+
+  .hamburger-icon span {
+    height: 2.5px;
+  }
+
+  .stat-card {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .stat-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 1.5rem;
+  }
+
+  .stat-number {
+    font-size: 1.5rem;
+  }
+
+  .stat-label {
+    font-size: 0.9rem;
+  }
+
+  .quick-actions,
+  .documents-container {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  .quick-actions h3 {
+    font-size: 1.1rem;
+  }
+
+  .action-card {
+    padding: 1rem;
+  }
+
+  .action-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.35rem;
+  }
+
+  .compact-doc-card {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .compact-doc-icon {
+    font-size: 1.75rem;
+  }
+
+  .compact-doc-info h4 {
+    font-size: 0.95rem;
+  }
+
+  .portfolio-header-left h2,
+  .compact-header-left h2 {
+    font-size: 1.5rem;
+  }
+
+  .portfolio-search-bar {
+    padding: 0.6rem 0.85rem;
+  }
+
+  .portfolio-search-bar input {
+    font-size: 16px; /* Prevents iOS zoom */
+  }
+
+  .toast-container {
+    bottom: 0.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+  }
+
+  .toast {
+    padding: 0.85rem 1rem;
+  }
+
+  .toast-message {
+    font-size: 0.875rem;
+  }
+
+  .form-field input,
+  .form-field select,
+  .form-field textarea,
+  .form-group-compact input,
+  .form-group-compact textarea {
+    font-size: 16px; /* Prevents iOS zoom */
+    padding: 0.65rem 0.85rem;
+  }
+
+  .upload-modal-content,
+  .doc-actions-modal {
+    margin: 0.5rem;
+  }
+
+  .btn-submit-upload,
+  .btn-cancel-upload {
+    padding: 0.65rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .stat-click-hint {
+    display: none;
+  }
 
   .viewer-not-supported {
-    padding: 1.5rem;
+    padding: 1.5rem 1rem;
   }
 
   .viewer-not-supported-icon {
@@ -2351,9 +2308,7 @@ a:focus-visible {
   .zoom-btn {
     padding: 0.75rem;
   }
-}
 
-@media (max-width: 480px) {
   .document-viewer-modal {
     padding: 0.5rem;
   }
@@ -2361,116 +2316,225 @@ a:focus-visible {
   .viewer-modal-container {
     max-height: 98vh;
   }
+}
 
-  .viewer-header {
-    padding: 0.75rem;
+/* Extra Small Mobile (< 360px) */
+@media (max-width: 359px) {
+  .dashboard-main {
+    padding: 0.5rem;
   }
 
-  .viewer-file-icon {
-    font-size: 1.75rem;
+  .top-header {
+    padding: 0.65rem;
   }
 
-  .viewer-title-section {
-    gap: 0.75rem;
+  .header-title {
+    font-size: 1.05rem;
   }
 
-  .viewer-close-btn {
-    padding: 0.4rem;
+  .header-subtitle {
+    font-size: 0.7rem;
   }
-}
 
-/* ============================================================
-   DOWNLOAD ENHANCEMENT STYLES
-   ============================================================ */
-
-.download-progress-toast {
-  position: fixed;
-  bottom: 6rem;
-  right: 1.5rem;
-  background: white;
-  border: 2px solid var(--blue-300);
-  border-radius: 12px;
-  padding: 1rem 1.5rem;
-  box-shadow: var(--shadow-xl);
-  z-index: 10000;
-  min-width: 280px;
-}
-
-.download-progress-content {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.download-progress-icon {
-  color: var(--blue-600);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.download-progress-text {
-  flex: 1;
-}
-
-.download-progress-text h4 {
-  margin: 0 0 0.25rem 0;
-  font-size: 0.95rem;
-  color: var(--gray-800);
-  font-weight: 600;
-}
-
-.download-progress-text p {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--gray-600);
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
+  .mobile-menu-button {
+    width: 36px;
+    height: 36px;
   }
-  50% {
-    opacity: 0.5;
+
+  .stat-card {
+    padding: 0.85rem;
+  }
+
+  .stat-number {
+    font-size: 1.35rem;
+  }
+
+  .compact-doc-card {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .action-card {
+    padding: 0.85rem;
+  }
+
+  .quick-actions,
+  .documents-container {
+    padding: 0.85rem;
   }
 }
 
 /* ============================================================
-   ACCESSIBILITY IMPROVEMENTS
+   ACCESSIBILITY
    ============================================================ */
 
-.viewer-close-btn:focus-visible,
-.zoom-btn:focus-visible,
-.viewer-download-btn:focus-visible {
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus Styles */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
   outline: 3px solid var(--purple-400);
   outline-offset: 2px;
 }
 
-/* ============================================================
-   PRINT STYLES FOR VIEWER
-   ============================================================ */
+.mobile-menu-button:focus-visible {
+  outline: 3px solid var(--purple-500);
+  outline-offset: 3px;
+}
 
-@media print {
-  .document-viewer-modal {
-    position: static;
-    background: white;
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .stat-card,
+  .action-card,
+  .compact-doc-card {
+    border-width: 3px;
   }
 
-  .viewer-header,
-  .viewer-mobile-controls,
-  .viewer-zoom-controls,
-  .viewer-close-btn {
+  button {
+    border: 2px solid currentColor;
+  }
+}
+
+/* ============================================================
+   PRINT STYLES
+   ============================================================ */
+@media print {
+  .toast-container,
+  .btn-upload-primary,
+  .btn-add-compact,
+  .btn-close-preview,
+  .compact-doc-menu,
+  .action-card,
+  .portfolio-search-bar,
+  .mobile-menu-button,
+  .mobile-menu-overlay,
+  .sidebar {
     display: none !important;
   }
 
-  .viewer-content-area {
-    max-height: none;
-    overflow: visible;
+  .dashboard-container {
+    background: white !important;
   }
 
-  .viewer-image-container img {
-    max-width: 100%;
+  .stat-card,
+  .compact-doc-card,
+  .compact-dairy-card {
+    break-inside: avoid;
     page-break-inside: avoid;
   }
+
+  body {
+    background: white !important;
+  }
+
+  .main-content {
+    margin: 0 !important;
+  }
+
+  .top-header {
+    position: static !important;
+  }
 }
+
 /* ============================================================
-   END OF DASHBOARD.CSS
+   SAFE AREA INSETS (FOR NOTCHED DEVICES)
    ============================================================ */
+@supports (padding: max(0px)) {
+  .top-header {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .dashboard-main {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .sidebar {
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+
+  .toast-container {
+    bottom: max(1.5rem, calc(1.5rem + env(safe-area-inset-bottom)));
+    right: max(1.5rem, calc(1.5rem + env(safe-area-inset-right)));
+  }
+}
+
+/* ============================================================
+   LANDSCAPE ORIENTATION OPTIMIZATIONS
+   ============================================================ */
+@media (max-height: 500px) and (orientation: landscape) {
+  .top-header {
+    padding: 0.5rem 1rem;
+  }
+
+  .header-title {
+    font-size: 1.1rem;
+  }
+
+  .stat-card {
+    padding: 0.85rem;
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+
+  .dashboard-main {
+    padding: 0.75rem;
+  }
+
+  .viewer-pdf-container,
+  .viewer-text-container {
+    height: 80vh;
+  }
+}
+
+/* ============================================================
+   TOUCH DEVICE OPTIMIZATIONS
+   ============================================================ */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets for mobile */
+  button,
+  .action-card,
+  .stat-card,
+  .compact-doc-card {
+    min-height: 44px;
+  }
+
+  /* Remove hover effects on touch devices */
+  .stat-card:hover,
+  .action-card:hover,
+  .compact-doc-card:hover {
+    transform: none;
+  }
+
+  /* Active states for touch feedback */
+  .stat-card:active {
+    transform: scale(0.98);
+  }
+
+  .action-card:active,
+  .compact-doc-card:active {
+    transform: scale(0.97);
+  }
+
+  button:active {
+    transform: scale(0.95);
+  }
+}
