@@ -126,7 +126,7 @@ export const ToastProvider = ({ children }) => {
 
       return id;
     },
-    [removeToast]
+    [removeToast],
   );
 
   // Memoized value to prevent unnecessary re-renders
@@ -140,7 +140,7 @@ export const ToastProvider = ({ children }) => {
       info: (message, duration) => addToast(message, "info", duration),
       warning: (message, duration) => addToast(message, "warning", duration),
     }),
-    [toasts, addToast, removeToast]
+    [toasts, addToast, removeToast],
   );
 
   return (
@@ -489,7 +489,9 @@ const DocumentViewerModal = ({ isOpen, onClose, document }) => {
       default:
         return (
           <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 p-6">
-            <div className="text-6xl mb-4">{getFileIcon(document.fileName)}</div>
+            <div className="text-6xl mb-4">
+              {getFileIcon(document.fileName)}
+            </div>
             <h3 className="text-xl font-bold text-gray-800 text-center">
               Preview not available
             </h3>
@@ -567,7 +569,9 @@ const DocumentViewerModal = ({ isOpen, onClose, document }) => {
                 >
                   <ZoomIn
                     size={20}
-                    className={zoom >= 200 ? "text-gray-400" : "text-purple-600"}
+                    className={
+                      zoom >= 200 ? "text-gray-400" : "text-purple-600"
+                    }
                   />
                 </button>
                 <button
@@ -595,7 +599,9 @@ const DocumentViewerModal = ({ isOpen, onClose, document }) => {
               <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm z-10">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
-                  <p className="text-gray-600 font-medium">Loading preview...</p>
+                  <p className="text-gray-600 font-medium">
+                    Loading preview...
+                  </p>
                   <p className="text-sm text-gray-500">{document.fileName}</p>
                 </div>
               </div>
@@ -751,7 +757,10 @@ const DocumentUploadModal = ({ isOpen, onClose, onUpload, isLoading }) => {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4 md:space-y-5">
+          <form
+            onSubmit={handleSubmit}
+            className="p-4 md:p-6 space-y-4 md:space-y-5"
+          >
             {/* Title Input */}
             <div>
               <label
@@ -979,7 +988,9 @@ const DocumentActionsModal = ({
               whileTap={{ scale: 0.98 }}
             >
               <Download size={24} />
-              <span className="text-sm md:text-base font-semibold">Download</span>
+              <span className="text-sm md:text-base font-semibold">
+                Download
+              </span>
             </motion.button>
 
             <motion.button
@@ -1020,7 +1031,13 @@ const DocumentActionsModal = ({
 // Modal for editing document title
 // ============================================================
 
-const DocumentEditModal = ({ isOpen, onClose, document, onUpdate, isLoading }) => {
+const DocumentEditModal = ({
+  isOpen,
+  onClose,
+  document,
+  onUpdate,
+  isLoading,
+}) => {
   const [title, setTitle] = useState("");
 
   // Set title when document changes
@@ -1163,7 +1180,7 @@ const DocumentEditModal = ({ isOpen, onClose, document, onUpdate, isLoading }) =
 
 const PortfolioContent = ({ currentUser }) => {
   const { success, error } = useToast();
-  
+
   // State management
   const [portfolioFiles, setPortfolioFiles] = useState([]);
   const [loadingFiles, setLoadingFiles] = useState(true);
@@ -1215,7 +1232,7 @@ const PortfolioContent = ({ currentUser }) => {
         console.error("Error fetching documents:", err);
         error("Failed to load documents");
         setLoadingFiles(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -1230,7 +1247,7 @@ const PortfolioContent = ({ currentUser }) => {
       const storage = getStorage();
       const fileRef = storageRef(
         storage,
-        `personalFiles/${uid}/${Date.now()}_${formData.file.name}`
+        `personalFiles/${uid}/${Date.now()}_${formData.file.name}`,
       );
 
       // Upload file to storage
@@ -1623,7 +1640,7 @@ const Dashboard = () => {
         // Filter files for subadmin users
         if (userRole === "subadmin") {
           filesData = filesData.filter(
-            (file) => file.uploadedBy === currentUser.uid
+            (file) => file.uploadedBy === currentUser.uid,
           );
         }
 
@@ -1635,7 +1652,7 @@ const Dashboard = () => {
         console.error("Error fetching files:", err);
         error("Error fetching files. Please try again.");
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -1647,10 +1664,10 @@ const Dashboard = () => {
   const updateStats = (filesArray) => {
     const totalFiles = filesArray.length;
     const pendingFiles = filesArray.filter(
-      (f) => f.status === "Pending" || !f.status
+      (f) => f.status === "Pending" || !f.status,
     ).length;
     const completedFiles = filesArray.filter(
-      (f) => f.status === "Completed"
+      (f) => f.status === "Completed",
     ).length;
 
     setStats({ totalFiles, pendingFiles, completedFiles });
@@ -1692,9 +1709,9 @@ const Dashboard = () => {
         filterType === "all"
           ? "all files"
           : filterType === "pending"
-          ? "pending files"
-          : "completed files"
-      }`
+            ? "pending files"
+            : "completed files"
+      }`,
     );
   };
 
@@ -1736,7 +1753,12 @@ const Dashboard = () => {
    * Overview Content Component
    * Dashboard home screen with statistics and quick actions
    */
-  const OverviewContent = ({ stats, loading, setActiveTab, onStatCardClick }) => {
+  const OverviewContent = ({
+    stats,
+    loading,
+    setActiveTab,
+    onStatCardClick,
+  }) => {
     if (loading) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
@@ -2005,8 +2027,8 @@ const Dashboard = () => {
                       {statusFilter === "all"
                         ? "All Files"
                         : statusFilter === "pending"
-                        ? "Pending Files"
-                        : "Completed Files"}
+                          ? "Pending Files"
+                          : "Completed Files"}
                     </strong>
                   </span>
                 </div>
@@ -2127,13 +2149,16 @@ const Dashboard = () => {
 
             {/* Dashboard Title */}
             <h1 className="flex items-center gap-2 md:gap-3 text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              <LayoutDashboard className="text-purple-600 hidden sm:block" size={24} />
+              <LayoutDashboard
+                className="text-purple-600 hidden sm:block"
+                size={24}
+              />
               <span className="hidden sm:inline">Dashboard</span>
             </h1>
 
             {/* User Welcome */}
             <p className="text-sm md:text-base text-gray-600 hidden sm:block">
-              Welcome back,{" "}
+              Welcome back{" "}
               <strong className="text-gray-800">
                 {userName || currentUser?.email?.split("@")[0]}
               </strong>

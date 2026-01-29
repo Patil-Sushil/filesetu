@@ -23,8 +23,8 @@ export const AuthProvider = ({ children }) => {
 
   // Create default admin user if it doesn't exist
   const createDefaultAdmin = async () => {
-    const adminEmail = "admin@gmail.com";
-    const adminPassword = "admin@123";
+    const adminEmail = "manojkarnaleofficial@gmail.com";
+    const adminPassword = "9420788100";
 
     try {
       // Check if admin already exists in database
@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
       if (snapshot.exists()) {
         const users = snapshot.val();
         adminExists = Object.values(users).some(
-          (user) => user.email === adminEmail
+          (user) => user.email === adminEmail,
         );
       }
 
@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
       const result = await createUserWithEmailAndPassword(
         auth,
         adminEmail,
-        adminPassword
+        adminPassword,
       );
 
       const uid = result.user.uid;
@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }) => {
       await set(ref(database, `user/${uid}`), {
         name: "Admin",
         email: adminEmail,
-        mobile: "0000000000",
+        mobile: "9420788100",
         role: "admin",
         createdAt: new Date().toISOString(),
         isDefaultAdmin: true,
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
           const loginResult = await signInWithEmailAndPassword(
             auth,
             adminEmail,
-            adminPassword
+            adminPassword,
           );
 
           const uid = loginResult.user.uid;
@@ -83,7 +83,7 @@ export const AuthProvider = ({ children }) => {
             await set(ref(database, `user/${uid}`), {
               name: "Admin",
               email: adminEmail,
-              mobile: "0000000000",
+              mobile: "9420788100",
               role: "admin",
               createdAt: new Date().toISOString(),
               isDefaultAdmin: true,
@@ -104,7 +104,7 @@ export const AuthProvider = ({ children }) => {
       const result = await createUserWithEmailAndPassword(
         auth,
         email,
-        password
+        password,
       );
       const uid = result.user.uid;
 

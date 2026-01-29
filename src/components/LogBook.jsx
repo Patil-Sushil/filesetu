@@ -35,10 +35,10 @@ import {
 
 /** ---------- Time helpers (12-hour) ---------- */
 const HOURS_12 = Array.from({ length: 12 }, (_, i) =>
-  String(i + 1).padStart(2, "0")
+  String(i + 1).padStart(2, "0"),
 );
 const MINUTES = Array.from({ length: 60 }, (_, i) =>
-  String(i).padStart(2, "0")
+  String(i).padStart(2, "0"),
 );
 const PERIODS = ["AM", "PM"];
 
@@ -69,7 +69,7 @@ const from24hTo12h = (t24) => {
   if (h === 0) h = 12;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(
     2,
-    "0"
+    "0",
   )} ${period}`;
 };
 
@@ -86,7 +86,7 @@ const split12 = (t12) => {
 
 const LogBook = () => {
   const { currentUser, userRole } = useAuth();
-  
+
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -128,9 +128,9 @@ const LogBook = () => {
   // ========== HELPER FUNCTION TO GET DATABASE PATH ==========
   const getDatabasePath = () => {
     if (userRole === "admin") {
-      return "logbook/admin"; // Shared path for all admin users
+      return "logbook/admin";
     }
-    return `logbook/${currentUser.uid}`; // User-specific path for non-admin
+    return `logbook/${currentUser.uid}`;
   };
 
   // Auto-calculate kilometers
@@ -157,8 +157,6 @@ const LogBook = () => {
 
     const db = getDatabase();
     const logbookRef = dbRef(db, getDatabasePath());
-
-    
 
     const unsubscribe = onValue(
       logbookRef,
@@ -190,78 +188,210 @@ const LogBook = () => {
         console.error("❌ Error fetching log entries:", err);
         showToast("Failed to load log entries", "error");
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
   }, [currentUser, userRole]);
 
+  // ========== COMPREHENSIVE VALIDATION (NO REQUIRED FIELDS) ==========
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.date) newErrors.date = "Date is required";
 
+    // ===== DATE VALIDATION =====
+    if (formData.date) {
+      const selectedDate = new Date(formData.date);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+
+      if (isNaN(selectedDate.getTime())) {
+        newErrors.date = "Please enter a valid date";
+      } else if (selectedDate > today) {
+        newErrors.date = "Date cannot be in the future";
+      }
+    }
+
+    // ===== FUEL VALIDATION =====
+    if (
+      formData.fuel !== "" &&
+      formData.fuel !== null &&
+      formData.fuel !== undefined
+    ) {
+      const fuelStr = String(formData.fuel).trim();
+      if (fuelStr) {
+        const fuelValue = parseFloat(fuelStr);
+        if (isNaN(fuelValue)) {
+          newErrors.fuel = "Please enter a valid number";
+        } else if (fuelValue < 0) {
+          newErrors.fuel = "Fuel cannot be negative";
+        } else if (fuelValue > 500) {
+          newErrors.fuel = "Please enter a realistic fuel amount (max 500L)";
+        } else if (!/^\d+(\.\d{1,2})?$/.test(fuelStr)) {
+          newErrors.fuel = "Maximum 2 decimal places allowed";
+        }
+      }
+    }
+
+    // ===== OIL VALIDATION =====
+    if (
+      formData.oil !== "" &&
+      formData.oil !== null &&
+      formData.oil !== undefined
+    ) {
+      const oilStr = String(formData.oil).trim();
+      if (oilStr) {
+        const oilValue = parseFloat(oilStr);
+        if (isNaN(oilValue)) {
+          newErrors.oil = "Please enter a valid number";
+        } else if (oilValue < 0) {
+          newErrors.oil = "Oil cannot be negative";
+        } else if (oilValue > 50) {
+          newErrors.oil = "Please enter a realistic oil amount (max 50L)";
+        } else if (!/^\d+(\.\d{1,2})?$/.test(oilStr)) {
+          newErrors.oil = "Maximum 2 decimal places allowed";
+        }
+      }
+    }
+
+    // ===== TIME VALIDATION =====
     const dep12 = to12hString(
       formData.depHour,
       formData.depMinute,
-      formData.depPeriod
+      formData.depPeriod,
     );
     const arr12 = to12hString(
       formData.arrHour,
       formData.arrMinute,
-      formData.arrPeriod
+      formData.arrPeriod,
     );
-
     const depMins = twelveToMinutes(dep12);
     const arrMins = twelveToMinutes(arr12);
 
-    if (depMins == null) newErrors.departure = "Departure time is required";
-    if (arrMins == null) newErrors.arrival = "Arrival time is required";
     if (depMins != null && arrMins != null && arrMins <= depMins) {
-      newErrors.arrival = "Arrival must be after departure";
+      newErrors.arrival = "Arrival time must be after departure time";
     }
 
-    if (!formData.from?.trim())
-      newErrors.from = "Starting location is required";
-    if (!formData.to?.trim()) newErrors.to = "Destination is required";
+    // ===== FROM LOCATION VALIDATION =====
+    if (formData.from && formData.from.trim()) {
+      const fromValue = formData.from.trim();
 
-    if (!formData.beforeMeterReading) {
-      newErrors.beforeMeterReading = "Before reading is required";
-    } else if (
-      isNaN(formData.beforeMeterReading) ||
-      Number(formData.beforeMeterReading) < 0
+      if (/^\d+$/.test(fromValue)) {
+        newErrors.from = "Location cannot be only numbers";
+      } else if (fromValue.length < 2) {
+        newErrors.from = "Location must be at least 2 characters";
+      } else if (fromValue.length > 100) {
+        newErrors.from = "Location is too long (max 100 characters)";
+      } else if (/^[^a-zA-Z\u0900-\u097F]+$/.test(fromValue)) {
+        newErrors.from = "Location must contain letters";
+      }
+    }
+
+    // ===== TO LOCATION VALIDATION =====
+    if (formData.to && formData.to.trim()) {
+      const toValue = formData.to.trim();
+
+      if (/^\d+$/.test(toValue)) {
+        newErrors.to = "Location cannot be only numbers";
+      } else if (toValue.length < 2) {
+        newErrors.to = "Location must be at least 2 characters";
+      } else if (toValue.length > 100) {
+        newErrors.to = "Location is too long (max 100 characters)";
+      } else if (/^[^a-zA-Z\u0900-\u097F]+$/.test(toValue)) {
+        newErrors.to = "Location must contain letters";
+      }
+    }
+
+    // ===== BEFORE METER READING VALIDATION =====
+    if (
+      formData.beforeMeterReading !== "" &&
+      formData.beforeMeterReading !== null
     ) {
-      newErrors.beforeMeterReading = "Enter a valid number";
+      const beforeStr = String(formData.beforeMeterReading).trim();
+      if (beforeStr) {
+        const beforeValue = parseFloat(beforeStr);
+        if (isNaN(beforeValue)) {
+          newErrors.beforeMeterReading = "Please enter a valid number";
+        } else if (beforeValue < 0) {
+          newErrors.beforeMeterReading = "Reading cannot be negative";
+        } else if (beforeValue > 9999999) {
+          newErrors.beforeMeterReading = "Reading value is too large";
+        } else if (!/^\d+(\.\d{1})?$/.test(beforeStr)) {
+          newErrors.beforeMeterReading = "Maximum 1 decimal place allowed";
+        }
+      }
     }
 
-    if (!formData.afterMeterReading) {
-      newErrors.afterMeterReading = "After reading is required";
-    } else if (
-      isNaN(formData.afterMeterReading) ||
-      Number(formData.afterMeterReading) < 0
+    // ===== AFTER METER READING VALIDATION =====
+    if (
+      formData.afterMeterReading !== "" &&
+      formData.afterMeterReading !== null
     ) {
-      newErrors.afterMeterReading = "Enter a valid number";
+      const afterStr = String(formData.afterMeterReading).trim();
+      if (afterStr) {
+        const afterValue = parseFloat(afterStr);
+        if (isNaN(afterValue)) {
+          newErrors.afterMeterReading = "Please enter a valid number";
+        } else if (afterValue < 0) {
+          newErrors.afterMeterReading = "Reading cannot be negative";
+        } else if (afterValue > 9999999) {
+          newErrors.afterMeterReading = "Reading value is too large";
+        } else if (!/^\d+(\.\d{1})?$/.test(afterStr)) {
+          newErrors.afterMeterReading = "Maximum 1 decimal place allowed";
+        } else {
+          const beforeValue = parseFloat(formData.beforeMeterReading);
+          if (!isNaN(beforeValue) && afterValue <= beforeValue) {
+            newErrors.afterMeterReading = "Must be greater than before reading";
+          }
+        }
+      }
     }
 
-    const before = parseFloat(formData.beforeMeterReading);
-    const after = parseFloat(formData.afterMeterReading);
-    if (!isNaN(before) && !isNaN(after) && after <= before) {
-      newErrors.afterMeterReading = "After reading must be greater than before";
+    // ===== KILOMETERS VALIDATION =====
+    if (formData.kilometers !== "" && formData.kilometers !== null) {
+      const kmStr = String(formData.kilometers).trim();
+      if (kmStr) {
+        const kmValue = parseFloat(kmStr);
+        if (isNaN(kmValue)) {
+          newErrors.kilometers = "Please enter a valid number";
+        } else if (kmValue < 0) {
+          newErrors.kilometers = "Distance cannot be negative";
+        } else if (kmValue > 2000) {
+          newErrors.kilometers =
+            "Please enter a realistic distance (max 2000 km)";
+        }
+      }
     }
 
-    if (!formData.kilometers) {
-      newErrors.kilometers = "Kilometers is required";
-    } else if (isNaN(formData.kilometers) || Number(formData.kilometers) <= 0) {
-      newErrors.kilometers = "Enter a valid number";
+    // ===== PURPOSE VALIDATION =====
+    if (formData.purpose && formData.purpose.trim()) {
+      const purposeValue = formData.purpose.trim();
+
+      if (/^\d+$/.test(purposeValue)) {
+        newErrors.purpose = "Purpose cannot be only numbers";
+      } else if (purposeValue.length < 3) {
+        newErrors.purpose = "Purpose must be at least 3 characters";
+      } else if (purposeValue.length > 200) {
+        newErrors.purpose = "Purpose is too long (max 200 characters)";
+      } else if (/^[^a-zA-Z\u0900-\u097F]+$/.test(purposeValue)) {
+        newErrors.purpose = "Purpose must contain letters";
+      }
     }
 
-    if (!formData.purpose?.trim()) newErrors.purpose = "Purpose is required";
-    if (!formData.usedBy?.trim()) newErrors.usedBy = "Driver name is required";
+    // ===== DRIVER NAME (USED BY) VALIDATION =====
+    if (formData.usedBy && formData.usedBy.trim()) {
+      const nameValue = formData.usedBy.trim();
 
-    if (formData.fuel && (isNaN(formData.fuel) || Number(formData.fuel) < 0)) {
-      newErrors.fuel = "Enter a valid number";
-    }
-    if (formData.oil && (isNaN(formData.oil) || Number(formData.oil) < 0)) {
-      newErrors.oil = "Enter a valid number";
+      if (/^\d+$/.test(nameValue)) {
+        newErrors.usedBy = "Name cannot be only numbers";
+      } else if (/\d/.test(nameValue)) {
+        newErrors.usedBy = "Name should not contain numbers";
+      } else if (nameValue.length < 2) {
+        newErrors.usedBy = "Name must be at least 2 characters";
+      } else if (nameValue.length > 50) {
+        newErrors.usedBy = "Name is too long (max 50 characters)";
+      } else if (!/^[a-zA-Z\u0900-\u097F\s.\-']+$/.test(nameValue)) {
+        newErrors.usedBy = "Name contains invalid characters";
+      }
     }
 
     setErrors(newErrors);
@@ -301,19 +431,19 @@ const LogBook = () => {
   const handleAddLog = async (e) => {
     e.preventDefault();
     if (!validateForm()) {
-      showToast("Please fix all errors", "error");
+      showToast("Please fix the errors before saving", "error");
       return;
     }
 
     const departureTime = to12hString(
       formData.depHour,
       formData.depMinute,
-      formData.depPeriod
+      formData.depPeriod,
     );
     const arrivalTime = to12hString(
       formData.arrHour,
       formData.arrMinute,
-      formData.arrPeriod
+      formData.arrPeriod,
     );
 
     try {
@@ -322,18 +452,18 @@ const LogBook = () => {
       const newLogRef = push(logbookRef);
 
       await set(newLogRef, {
-        date: formData.date,
-        fuel: formData.fuel,
-        oil: formData.oil,
+        date: formData.date || new Date().toISOString().split("T")[0],
+        fuel: formData.fuel || "",
+        oil: formData.oil || "",
         departureTime,
         arrivalTime,
-        from: formData.from,
-        to: formData.to,
-        beforeMeterReading: formData.beforeMeterReading,
-        afterMeterReading: formData.afterMeterReading,
-        kilometers: formData.kilometers,
-        purpose: formData.purpose,
-        usedBy: formData.usedBy,
+        from: formData.from?.trim() || "",
+        to: formData.to?.trim() || "",
+        beforeMeterReading: formData.beforeMeterReading || "",
+        afterMeterReading: formData.afterMeterReading || "",
+        kilometers: formData.kilometers || "",
+        purpose: formData.purpose?.trim() || "",
+        usedBy: formData.usedBy?.trim() || "",
         remarks: "",
         createdAt: new Date().toISOString(),
         createdBy: currentUser.uid,
@@ -352,19 +482,19 @@ const LogBook = () => {
   const handleUpdateLog = async (e) => {
     e.preventDefault();
     if (!validateForm()) {
-      showToast("Please fix all errors", "error");
+      showToast("Please fix the errors before saving", "error");
       return;
     }
 
     const departureTime = to12hString(
       formData.depHour,
       formData.depMinute,
-      formData.depPeriod
+      formData.depPeriod,
     );
     const arrivalTime = to12hString(
       formData.arrHour,
       formData.arrMinute,
-      formData.arrPeriod
+      formData.arrPeriod,
     );
 
     try {
@@ -372,18 +502,18 @@ const LogBook = () => {
       const logRef = dbRef(db, `${getDatabasePath()}/${selectedLog.id}`);
 
       await update(logRef, {
-        date: formData.date,
-        fuel: formData.fuel,
-        oil: formData.oil,
+        date: formData.date || new Date().toISOString().split("T")[0],
+        fuel: formData.fuel || "",
+        oil: formData.oil || "",
         departureTime,
         arrivalTime,
-        from: formData.from,
-        to: formData.to,
-        beforeMeterReading: formData.beforeMeterReading,
-        afterMeterReading: formData.afterMeterReading,
-        kilometers: formData.kilometers,
-        purpose: formData.purpose,
-        usedBy: formData.usedBy,
+        from: formData.from?.trim() || "",
+        to: formData.to?.trim() || "",
+        beforeMeterReading: formData.beforeMeterReading || "",
+        afterMeterReading: formData.afterMeterReading || "",
+        kilometers: formData.kilometers || "",
+        purpose: formData.purpose?.trim() || "",
+        usedBy: formData.usedBy?.trim() || "",
         remarks: "",
         updatedAt: new Date().toISOString(),
         updatedBy: currentUser.uid,
@@ -568,19 +698,23 @@ const LogBook = () => {
                 <td>{new Date(log.date).toLocaleDateString("en-GB")}</td>
                 <td className="td-center">{log.fuel || "-"}</td>
                 <td className="td-center">{log.oil || "-"}</td>
-                <td>{log.departureTime || ""}</td>
-                <td>{log.arrivalTime || ""}</td>
-                <td>{log.from || ""}</td>
-                <td>{log.to || ""}</td>
+                <td>{log.departureTime || "-"}</td>
+                <td>{log.arrivalTime || "-"}</td>
+                <td>{log.from || "-"}</td>
+                <td>{log.to || "-"}</td>
                 <td className="td-right">
-                  {log.beforeMeterReading || log.meterReading || ""}
+                  {log.beforeMeterReading || log.meterReading || "-"}
                 </td>
-                <td className="td-right">{log.afterMeterReading || ""}</td>
+                <td className="td-right">{log.afterMeterReading || "-"}</td>
                 <td className="td-center">
-                  <strong>{Math.round(parseFloat(log.kilometers) || 0)}</strong>
+                  <strong>
+                    {log.kilometers
+                      ? Math.round(parseFloat(log.kilometers))
+                      : "-"}
+                  </strong>
                 </td>
-                <td>{log.purpose || ""}</td>
-                <td>{log.usedBy || ""}</td>
+                <td>{log.purpose || "-"}</td>
+                <td>{log.usedBy || "-"}</td>
                 <td></td>
               </tr>
             ))}
@@ -691,23 +825,25 @@ const LogBook = () => {
                         </td>
                         <td className="td-center">{log.fuel || "-"}</td>
                         <td className="td-center">{log.oil || "-"}</td>
-                        <td>{log.departureTime || ""}</td>
-                        <td>{log.arrivalTime || ""}</td>
-                        <td>{log.from || ""}</td>
-                        <td>{log.to || ""}</td>
+                        <td>{log.departureTime || "-"}</td>
+                        <td>{log.arrivalTime || "-"}</td>
+                        <td>{log.from || "-"}</td>
+                        <td>{log.to || "-"}</td>
                         <td className="td-right">
-                          {log.beforeMeterReading || log.meterReading || ""}
+                          {log.beforeMeterReading || log.meterReading || "-"}
                         </td>
                         <td className="td-right">
-                          {log.afterMeterReading || ""}
+                          {log.afterMeterReading || "-"}
                         </td>
                         <td className="td-center">
                           <strong>
-                            {Math.round(parseFloat(log.kilometers) || 0)}
+                            {log.kilometers
+                              ? Math.round(parseFloat(log.kilometers))
+                              : "-"}
                           </strong>
                         </td>
-                        <td>{log.purpose || ""}</td>
-                        <td>{log.usedBy || ""}</td>
+                        <td>{log.purpose || "-"}</td>
+                        <td>{log.usedBy || "-"}</td>
                         <td></td>
                       </tr>
                     ))}
@@ -741,7 +877,7 @@ const LogBook = () => {
           <div className="logbook-header-left">
             <h2>
               <Car size={24} />
-              Vehicle Log Book 
+              Vehicle Log Book
             </h2>
             <p>Track and manage your daily vehicle records</p>
           </div>
@@ -846,28 +982,28 @@ const LogBook = () => {
                         <div className="td-route">
                           <div className="route-item">
                             <MapPin size={12} className="icon-from" />
-                            {log.from}
+                            {log.from || "-"}
                           </div>
                           <div className="route-arrow">→</div>
                           <div className="route-item">
                             <MapPin size={12} className="icon-to" />
-                            {log.to}
+                            {log.to || "-"}
                           </div>
                         </div>
                       </td>
                       <td>
                         <div className="td-time">
                           <div>
-                            <Clock size={12} /> {log.departureTime}
+                            <Clock size={12} /> {log.departureTime || "-"}
                           </div>
                           <div className="time-arrival">
-                            → {log.arrivalTime}
+                            → {log.arrivalTime || "-"}
                           </div>
                         </div>
                       </td>
                       <td>
                         <div className="td-distance">
-                          <strong>{log.kilometers} km</strong>
+                          <strong>{log.kilometers || "0"} km</strong>
                           <small>
                             Before:{" "}
                             {log.beforeMeterReading || log.meterReading || "-"}
@@ -892,12 +1028,12 @@ const LogBook = () => {
                         </div>
                       </td>
                       <td>
-                        <div className="td-purpose">{log.purpose}</div>
+                        <div className="td-purpose">{log.purpose || "-"}</div>
                       </td>
                       <td>
                         <div className="td-user">
                           <User size={12} />
-                          {log.usedBy}
+                          {log.usedBy || "-"}
                         </div>
                       </td>
                     </motion.tr>
@@ -958,18 +1094,20 @@ const LogBook = () => {
                   <div className="summary-item">
                     <span className="summary-label">Route:</span>
                     <span className="summary-value">
-                      {selectedLog.from} → {selectedLog.to}
+                      {selectedLog.from || "-"} → {selectedLog.to || "-"}
                     </span>
                   </div>
                   <div className="summary-item">
                     <span className="summary-label">Distance:</span>
                     <span className="summary-value">
-                      {selectedLog.kilometers} km
+                      {selectedLog.kilometers || "0"} km
                     </span>
                   </div>
                   <div className="summary-item">
                     <span className="summary-label">Driver:</span>
-                    <span className="summary-value">{selectedLog.usedBy}</span>
+                    <span className="summary-value">
+                      {selectedLog.usedBy || "-"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1029,9 +1167,7 @@ const LogBook = () => {
               >
                 <div className="form-grid">
                   <div className="form-group">
-                    <label>
-                      Date <span className="required">*</span>
-                    </label>
+                    <label>Date</label>
                     <input
                       name="date"
                       type="date"
@@ -1051,7 +1187,9 @@ const LogBook = () => {
                       name="fuel"
                       type="number"
                       step="0.01"
-                      placeholder="0.00"
+                      min="0"
+                      max="500"
+                      placeholder="e.g., 25.50"
                       value={formData.fuel}
                       onChange={handleChange}
                       className={errors.fuel ? "error" : ""}
@@ -1067,7 +1205,9 @@ const LogBook = () => {
                       name="oil"
                       type="number"
                       step="0.01"
-                      placeholder="0.00"
+                      min="0"
+                      max="50"
+                      placeholder="e.g., 2.5"
                       value={formData.oil}
                       onChange={handleChange}
                       className={errors.oil ? "error" : ""}
@@ -1078,9 +1218,7 @@ const LogBook = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      Departure Time <span className="required">*</span>
-                    </label>
+                    <label>Departure Time</label>
                     <div className="time-12h">
                       <select
                         value={formData.depHour}
@@ -1135,9 +1273,7 @@ const LogBook = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      Arrival Time <span className="required">*</span>
-                    </label>
+                    <label>Arrival Time</label>
                     <div className="time-12h">
                       <select
                         value={formData.arrHour}
@@ -1192,13 +1328,12 @@ const LogBook = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      From <span className="required">*</span>
-                    </label>
+                    <label>From (Starting Location)</label>
                     <input
                       name="from"
                       type="text"
-                      placeholder="Starting location"
+                      placeholder="e.g., Mumbai Office"
+                      maxLength="100"
                       value={formData.from}
                       onChange={handleChange}
                       className={errors.from ? "error" : ""}
@@ -1209,13 +1344,12 @@ const LogBook = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      To <span className="required">*</span>
-                    </label>
+                    <label>To (Destination)</label>
                     <input
                       name="to"
                       type="text"
-                      placeholder="Destination"
+                      placeholder="e.g., Pune Station"
+                      maxLength="100"
                       value={formData.to}
                       onChange={handleChange}
                       className={errors.to ? "error" : ""}
@@ -1226,13 +1360,13 @@ const LogBook = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      Before Reading <span className="required">*</span>
-                    </label>
+                    <label>Before Meter Reading</label>
                     <input
                       name="beforeMeterReading"
                       type="number"
-                      placeholder="Before reading"
+                      step="0.1"
+                      min="0"
+                      placeholder="e.g., 45230"
                       value={formData.beforeMeterReading}
                       onChange={handleChange}
                       className={errors.beforeMeterReading ? "error" : ""}
@@ -1245,13 +1379,13 @@ const LogBook = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      After Reading <span className="required">*</span>
-                    </label>
+                    <label>After Meter Reading</label>
                     <input
                       name="afterMeterReading"
                       type="number"
-                      placeholder="After reading"
+                      step="0.1"
+                      min="0"
+                      placeholder="e.g., 45380"
                       value={formData.afterMeterReading}
                       onChange={handleChange}
                       className={errors.afterMeterReading ? "error" : ""}
@@ -1264,14 +1398,12 @@ const LogBook = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      Kilometers <span className="required">*</span>
-                    </label>
+                    <label>Kilometers (Auto-calculated)</label>
                     <input
                       name="kilometers"
                       type="number"
                       step="0.1"
-                      placeholder="Auto-calculated"
+                      placeholder="Auto-calculated from readings"
                       value={formData.kilometers}
                       onChange={handleChange}
                       className={errors.kilometers ? "error" : ""}
@@ -1287,13 +1419,12 @@ const LogBook = () => {
                   </div>
 
                   <div className="form-group full-width">
-                    <label>
-                      Purpose <span className="required">*</span>
-                    </label>
+                    <label>Purpose of Trip</label>
                     <input
                       name="purpose"
                       type="text"
-                      placeholder="Purpose of trip"
+                      placeholder="e.g., Official meeting at Collector Office"
+                      maxLength="200"
                       value={formData.purpose}
                       onChange={handleChange}
                       className={errors.purpose ? "error" : ""}
@@ -1304,13 +1435,12 @@ const LogBook = () => {
                   </div>
 
                   <div className="form-group full-width">
-                    <label>
-                      Driver Name <span className="required">*</span>
-                    </label>
+                    <label>Driver Name</label>
                     <input
                       name="usedBy"
                       type="text"
-                      placeholder="Driver/user name"
+                      placeholder="e.g., Ramesh Kumar"
+                      maxLength="50"
                       value={formData.usedBy}
                       onChange={handleChange}
                       className={errors.usedBy ? "error" : ""}
@@ -1398,7 +1528,8 @@ const LogBook = () => {
                     <Clock size={16} /> Time
                   </div>
                   <div className="detail-value">
-                    {selectedLog.departureTime} - {selectedLog.arrivalTime}
+                    {selectedLog.departureTime || "-"} -{" "}
+                    {selectedLog.arrivalTime || "-"}
                   </div>
                 </div>
 
@@ -1407,7 +1538,7 @@ const LogBook = () => {
                     <MapPin size={16} /> Route
                   </div>
                   <div className="detail-value">
-                    {selectedLog.from} → {selectedLog.to}
+                    {selectedLog.from || "-"} → {selectedLog.to || "-"}
                   </div>
                 </div>
 
@@ -1430,7 +1561,7 @@ const LogBook = () => {
                     <FileText size={16} /> Distance
                   </div>
                   <div className="detail-value">
-                    <strong>{selectedLog.kilometers} km</strong>
+                    <strong>{selectedLog.kilometers || "0"} km</strong>
                   </div>
                 </div>
 
@@ -1453,14 +1584,18 @@ const LogBook = () => {
                   <div className="detail-label">
                     <FileText size={16} /> Purpose
                   </div>
-                  <div className="detail-value">{selectedLog.purpose}</div>
+                  <div className="detail-value">
+                    {selectedLog.purpose || "-"}
+                  </div>
                 </div>
 
                 <div className="detail-row">
                   <div className="detail-label">
                     <User size={16} /> Driver
                   </div>
-                  <div className="detail-value">{selectedLog.usedBy}</div>
+                  <div className="detail-value">
+                    {selectedLog.usedBy || "-"}
+                  </div>
                 </div>
               </div>
 
@@ -1527,12 +1662,25 @@ const LogBook = () => {
           color: white;
         }
 
-        /* ===== PRINT CONTENT - HIDDEN ON SCREEN ===== */
+        /* ===== PRINT STYLES - REMOVE URL/DATE/TITLE ===== */
         .print-only {
           display: none;
         }
 
         @media print {
+          /* Remove default headers and footers */
+          @page {
+            size: A4 landscape;
+            margin: 10mm;
+          }
+
+          /* Hide URL, date, page title from browser */
+          html {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          /* Hide everything except print content */
           body * {
             visibility: hidden;
           }
@@ -1550,9 +1698,17 @@ const LogBook = () => {
             width: 100%;
           }
 
-          @page {
-            size: A4 landscape;
-            margin: 10mm;
+          /* Hide all other elements */
+          .logbook-container,
+          .toast,
+          .logbook-modal-backdrop,
+          .delete-confirm-backdrop,
+          .pdf-preview-modal,
+          header,
+          footer,
+          nav,
+          aside {
+            display: none !important;
           }
         }
 
@@ -2228,6 +2384,7 @@ const LogBook = () => {
         .form-group input.error,
         .form-group select.error {
           border-color: #ef4444;
+          background-color: #fef2f2;
         }
 
         .error-text {
@@ -2389,20 +2546,16 @@ const LogBook = () => {
 
         /* ===== RESPONSIVE ===== */
         
-        /* Desktop & Large Tablet (1024px+) - Sidebar-aware */
         @media (min-width: 1024px) {
-          /* Adjust for sidebar expanded state */
           .main-content:not(.sidebar-collapsed) .logbook-container {
             max-width: calc(100vw - 280px - 4rem);
           }
 
-          /* Adjust for sidebar collapsed state */
           .main-content.sidebar-collapsed .logbook-container {
             max-width: calc(100vw - 80px - 4rem);
           }
         }
 
-        /* Tablet (768px - 1023px) - Sidebar-aware on larger tablets */
         @media (max-width: 1023px) and (min-width: 768px) {
           .main-content:not(.sidebar-collapsed) .logbook-container {
             max-width: calc(100vw - 280px - 3rem);
@@ -2413,9 +2566,7 @@ const LogBook = () => {
           }
         }
 
-        /* Mobile & Small Tablet (max-width: 767px) - No sidebar margin */
         @media (max-width: 768px) {
-          /* Reset container for mobile - ignore sidebar */
           .main-content .logbook-container,
           .main-content.sidebar-collapsed .logbook-container,
           .main-content:not(.sidebar-collapsed) .logbook-container {

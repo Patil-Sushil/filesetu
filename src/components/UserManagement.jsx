@@ -22,6 +22,7 @@ import {
   EyeOff,
   Calendar,
   ChevronRight,
+  Lock,
 } from "lucide-react";
 
 // ============================================================
@@ -70,6 +71,9 @@ const UserDetailsModal = ({
 }) => {
   if (!isOpen || !user) return null;
 
+  // Check if this is the default admin
+  const isDefaultAdmin = user.isDefaultAdmin === true;
+
   return (
     <AnimatePresence>
       <motion.div
@@ -99,9 +103,18 @@ const UserDetailsModal = ({
               <X size={20} />
             </button>
             <h2 className="text-xl font-bold text-white mb-1.5">{user.name}</h2>
-            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-white/25 text-white border border-white/30">
-              {user.role === "admin" ? "👑 Administrator" : "👤 Sub Administrator"}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-white/25 text-white border border-white/30">
+                {user.role === "admin"
+                  ? "👑 Administrator"
+                  : "👤 Sub Administrator"}
+              </span>
+              {isDefaultAdmin && (
+                <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-yellow-400/90 text-yellow-900 border border-yellow-500/50">
+                  🔒 Default
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Content */}
@@ -161,6 +174,19 @@ const UserDetailsModal = ({
                 </div>
               </div>
             </div>
+
+            {/* Default Admin Notice */}
+            {isDefaultAdmin && (
+              <div className="mt-4 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
+                <div className="flex items-center gap-2 text-yellow-800">
+                  <Lock size={16} className="flex-shrink-0" />
+                  <span className="text-sm font-semibold">
+                    This is the default administrator account. Role cannot be
+                    changed.
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
@@ -178,7 +204,7 @@ const UserDetailsModal = ({
               Edit User
             </motion.button>
 
-            {user.uid !== currentUserId && (
+            {user.uid !== currentUserId && !isDefaultAdmin && (
               <motion.button
                 className="flex-1 py-3 px-4 bg-white hover:bg-red-500 text-red-500 hover:text-white border-2 border-red-500 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:shadow-red-500/30"
                 onClick={() => {
@@ -314,6 +340,23 @@ const UserManagement = ({ showToast }) => {
   });
 
   // ============================================================
+  // CHECK IF USER IS DEFAULT ADMIN
+  // ============================================================
+
+  const isDefaultAdminUser = (user) => {
+    return user?.isDefaultAdmin === true;
+  };
+
+  // Check if role editing is disabled for a user
+  const isRoleEditDisabled = (user) => {
+    // Disable role editing for default admin
+    if (isDefaultAdminUser(user)) return true;
+    // Optionally: Also prevent users from changing their own role
+    // if (user?.uid === currentUser?.uid) return true;
+    return false;
+  };
+
+  // ============================================================
   // FETCH USERS
   // ============================================================
 
@@ -341,7 +384,7 @@ const UserManagement = ({ showToast }) => {
       (error) => {
         console.error("Error fetching users:", error);
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -354,8 +397,7 @@ const UserManagement = ({ showToast }) => {
   const validateName = (name) => {
     if (!name.trim()) return "Name is required";
     if (name.trim().length < 2) return "Name must be at least 2 characters";
-    if (name.trim().length > 50)
-      return "Name must not exceed 50 characters";
+    if (name.trim().length > 50) return "Name must not exceed 50 characters";
     if (!/^[a-zA-Z\s]+$/.test(name))
       return "Name can only contain letters and spaces";
     return "";
@@ -380,8 +422,7 @@ const UserManagement = ({ showToast }) => {
   const validatePassword = (password) => {
     if (!password) return "Password is required";
     if (password.length < 6) return "Password must be at least 6 characters";
-    if (password.length > 50)
-      return "Password must not exceed 50 characters";
+    if (password.length > 50) return "Password must not exceed 50 characters";
     return "";
   };
 
@@ -478,7 +519,7 @@ const UserManagement = ({ showToast }) => {
       const userCredential = await createUserWithEmailAndPassword(
         secondaryAuth,
         formData.email.trim(),
-        formData.password
+        formData.password,
       );
 
       const uid = userCredential.user.uid;
@@ -490,6 +531,7 @@ const UserManagement = ({ showToast }) => {
         role: formData.role,
         createdAt: new Date().toISOString(),
         createdBy: currentUser.uid,
+        isDefaultAdmin: false, // New users are never default admin
       });
 
       await secondaryAuth.signOut();
@@ -506,7 +548,7 @@ const UserManagement = ({ showToast }) => {
         "auth/operation-not-allowed": "User creation is not enabled",
       };
       showToast?.error?.(
-        errorMessages[error.code] || `Error: ${error.message}`
+        errorMessages[error.code] || `Error: ${error.message}`,
       );
     } finally {
       setIsSubmitting(false);
@@ -525,13 +567,28 @@ const UserManagement = ({ showToast }) => {
 
     try {
       const userRef = ref(database, `user/${editingUser.uid}`);
-      await update(userRef, {
+
+      // Prepare update data
+      const updateData = {
         name: formData.name.trim(),
         mobile: formData.mobile.trim(),
-        role: formData.role,
         updatedAt: new Date().toISOString(),
         updatedBy: currentUser.uid,
-      });
+      };
+
+      // Only update role if the user is NOT a default admin
+      if (!isDefaultAdminUser(editingUser)) {
+        updateData.role = formData.role;
+      } else {
+        // Show a warning if someone tries to change default admin role
+        if (formData.role !== editingUser.role) {
+          showToast?.warning?.(
+            "Cannot change the role of the default administrator",
+          );
+        }
+      }
+
+      await update(userRef, updateData);
 
       showToast?.success?.(`User "${formData.name}" updated successfully!`);
       setEditingUser(null);
@@ -569,6 +626,11 @@ const UserManagement = ({ showToast }) => {
   };
 
   const handleDeleteClick = (user) => {
+    // Prevent deletion of default admin
+    if (isDefaultAdminUser(user)) {
+      showToast?.error?.("Cannot delete the default administrator account");
+      return;
+    }
     setDeleteDialog({ isOpen: true, user });
   };
 
@@ -576,11 +638,16 @@ const UserManagement = ({ showToast }) => {
     const user = deleteDialog.user;
     if (!user) return;
 
+    // Double-check: Prevent deletion of default admin
+    if (isDefaultAdminUser(user)) {
+      showToast?.error?.("Cannot delete the default administrator account");
+      setDeleteDialog({ isOpen: false, user: null });
+      return;
+    }
+
     try {
       await remove(ref(database, `user/${user.uid}`));
-      showToast?.success?.(
-        `User "${user.name}" has been permanently deleted`
-      );
+      showToast?.success?.(`User "${user.name}" has been permanently deleted`);
       setDeleteDialog({ isOpen: false, user: null });
     } catch (error) {
       console.error("Error deleting user:", error);
@@ -615,7 +682,7 @@ const UserManagement = ({ showToast }) => {
       user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.mobile?.includes(searchTerm)
+      user.mobile?.includes(searchTerm),
   );
 
   // ============================================================
@@ -626,9 +693,7 @@ const UserManagement = ({ showToast }) => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-2xl shadow-lg p-8 m-8">
         <Shield size={48} className="text-purple-500 mb-4" />
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          Access Denied
-        </h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
         <p className="text-gray-600">
           Only administrators can access user management.
         </p>
@@ -764,9 +829,18 @@ const UserManagement = ({ showToast }) => {
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-purple-700 text-white flex items-center justify-center font-semibold text-lg shadow-md flex-shrink-0">
                             {user.name?.charAt(0).toUpperCase()}
                           </div>
-                          <span className="font-medium text-gray-800">
-                            {user.name}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-800">
+                              {user.name}
+                            </span>
+                            {isDefaultAdminUser(user) && (
+                              <Lock
+                                size={14}
+                                className="text-yellow-600"
+                                title="Default Admin"
+                              />
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-gray-700 max-w-xs truncate">
@@ -776,15 +850,24 @@ const UserManagement = ({ showToast }) => {
                         {user.mobile}
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap ${
-                            user.role === "admin"
-                              ? "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-md shadow-pink-500/30"
-                              : "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30"
-                          }`}
-                        >
-                          {user.role === "admin" ? "👑 Admin" : "👤 Sub Admin"}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap ${
+                              user.role === "admin"
+                                ? "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-md shadow-pink-500/30"
+                                : "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30"
+                            }`}
+                          >
+                            {user.role === "admin"
+                              ? "👑 Admin"
+                              : "👤 Sub Admin"}
+                          </span>
+                          {isDefaultAdminUser(user) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-300">
+                              🔒 Default
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-gray-600 text-sm whitespace-nowrap">
                         {user.createdAt
@@ -794,7 +877,7 @@ const UserManagement = ({ showToast }) => {
                                 year: "numeric",
                                 month: "short",
                                 day: "numeric",
-                              }
+                              },
                             )
                           : "N/A"}
                       </td>
@@ -853,9 +936,18 @@ const UserManagement = ({ showToast }) => {
                     {user.name?.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-gray-800 truncate">
-                      {user.name}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-gray-800 truncate">
+                        {user.name}
+                      </h3>
+                      {isDefaultAdminUser(user) && (
+                        <Lock
+                          size={14}
+                          className="text-yellow-600 flex-shrink-0"
+                          title="Default Admin"
+                        />
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600 truncate">
                       {user.email}
                     </p>
@@ -865,20 +957,30 @@ const UserManagement = ({ showToast }) => {
                     className="text-purple-400 flex-shrink-0"
                   />
                 </div>
-                <span
-                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold mb-3 ${
-                    user.role === "admin"
-                      ? "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-sm"
-                      : "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm"
-                  }`}
-                >
-                  {user.role === "admin"
-                    ? "👑 Administrator"
-                    : "👤 Sub Administrator"}
-                </span>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <span
+                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
+                      user.role === "admin"
+                        ? "bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-sm"
+                        : "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm"
+                    }`}
+                  >
+                    {user.role === "admin"
+                      ? "👑 Administrator"
+                      : "👤 Sub Administrator"}
+                  </span>
+                  {isDefaultAdminUser(user) && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-300">
+                      🔒 Default
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-3 md:gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1.5">
-                    <Phone size={14} className="text-purple-400 flex-shrink-0" />
+                    <Phone
+                      size={14}
+                      className="text-purple-400 flex-shrink-0"
+                    />
                     <span className="truncate">{user.mobile}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -888,14 +990,11 @@ const UserManagement = ({ showToast }) => {
                     />
                     <span className="truncate">
                       {user.createdAt
-                        ? new Date(user.createdAt).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            }
-                          )
+                        ? new Date(user.createdAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
                         : "N/A"}
                     </span>
                   </div>
@@ -953,6 +1052,14 @@ const UserManagement = ({ showToast }) => {
                       ? "Update user information"
                       : "Create a new user account"}
                   </p>
+                  {editingUser && isDefaultAdminUser(editingUser) && (
+                    <div className="flex items-center gap-2 mt-2 px-3 py-1.5 bg-yellow-50 border border-yellow-200 rounded-lg w-fit">
+                      <Lock size={14} className="text-yellow-600" />
+                      <span className="text-xs font-semibold text-yellow-700">
+                        Default Admin - Role cannot be changed
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <button
                   className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-600 rounded-lg transition-all duration-200 flex items-center justify-center flex-shrink-0 ml-2"
@@ -1036,8 +1143,8 @@ const UserManagement = ({ showToast }) => {
                         formErrors.email
                           ? "border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-100"
                           : editingUser
-                          ? "border-gray-200 bg-gray-100 cursor-not-allowed"
-                          : "border-purple-200 bg-white focus:border-purple-400 focus:ring-purple-100"
+                            ? "border-gray-200 bg-gray-100 cursor-not-allowed"
+                            : "border-purple-200 bg-white focus:border-purple-400 focus:ring-purple-100"
                       }`}
                       autoComplete="email"
                     />
@@ -1166,8 +1273,8 @@ const UserManagement = ({ showToast }) => {
                                 passwordStrength.level === "weak"
                                   ? "w-1/3"
                                   : passwordStrength.level === "medium"
-                                  ? "w-2/3"
-                                  : "w-full"
+                                    ? "w-2/3"
+                                    : "w-full"
                               }`}
                               style={{
                                 backgroundColor: passwordStrength.color,
@@ -1196,23 +1303,48 @@ const UserManagement = ({ showToast }) => {
                     >
                       <Shield size={16} />
                       User Role *
+                      {editingUser && isRoleEditDisabled(editingUser) && (
+                        <Lock size={14} className="text-yellow-600 ml-1" />
+                      )}
                     </label>
                     <select
                       id="role"
                       name="role"
                       value={formData.role}
                       onChange={handleChange}
-                      disabled={isSubmitting}
-                      className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl text-base transition-all duration-300 focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100 bg-white"
+                      disabled={
+                        isSubmitting ||
+                        (editingUser && isRoleEditDisabled(editingUser))
+                      }
+                      className={`w-full px-4 py-3 border-2 rounded-xl text-base transition-all duration-300 focus:outline-none focus:ring-4 ${
+                        editingUser && isRoleEditDisabled(editingUser)
+                          ? "border-yellow-300 bg-yellow-50 cursor-not-allowed text-gray-600"
+                          : "border-purple-200 bg-white focus:border-purple-400 focus:ring-purple-100"
+                      }`}
                     >
                       <option value="subadmin">👤 Sub Administrator</option>
                       <option value="admin">👑 Administrator</option>
                     </select>
-                    <span className="text-gray-600 text-sm mt-1.5 block">
-                      {formData.role === "admin"
-                        ? "👑 Full access to all features"
-                        : "👤 Limited access - files only"}
-                    </span>
+
+                    {/* Show different messages based on context */}
+                    {editingUser && isRoleEditDisabled(editingUser) ? (
+                      <div className="flex items-center gap-2 mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <Lock
+                          size={16}
+                          className="text-yellow-600 flex-shrink-0"
+                        />
+                        <span className="text-yellow-700 text-sm font-medium">
+                          The role of the default administrator cannot be
+                          changed for security reasons.
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-gray-600 text-sm mt-1.5 block">
+                        {formData.role === "admin"
+                          ? "👑 Full access to all features"
+                          : "👤 Limited access - files only"}
+                      </span>
+                    )}
                   </div>
                 </div>
 
