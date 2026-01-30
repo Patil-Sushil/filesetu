@@ -71,12 +71,7 @@ const Sidebar = ({
     if (userRole === "admin") {
       return [
         ...baseItems,
-        {
-          id: "portfolio",
-          label: "My Files",
-          icon: <FolderOpen size={20} />,
-          emoji: "💼",
-        },
+
         {
           id: "dairy",
           label: "Daily Dairy",
@@ -96,6 +91,12 @@ const Sidebar = ({
           label: "User Management",
           icon: <Users size={20} />,
           emoji: "👥",
+        },
+        {
+          id: "portfolio",
+          label: "My Files",
+          icon: <FolderOpen size={20} />,
+          emoji: "💼",
         },
       ];
     }

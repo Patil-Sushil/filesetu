@@ -355,9 +355,6 @@ const LogBook = () => {
           newErrors.kilometers = "Please enter a valid number";
         } else if (kmValue < 0) {
           newErrors.kilometers = "Distance cannot be negative";
-        } else if (kmValue > 2000) {
-          newErrors.kilometers =
-            "Please enter a realistic distance (max 2000 km)";
         }
       }
     }
