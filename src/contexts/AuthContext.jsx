@@ -23,8 +23,8 @@ export const AuthProvider = ({ children }) => {
 
   // Create default admin user if it doesn't exist
   const createDefaultAdmin = async () => {
-    const adminEmail = "patilsushil794@gmail.com";
-    const adminPassword = "142203";
+    const adminEmail = "manojkarnaleofficial@gmail.com";
+    const adminPassword = "9420788100";
 
     try {
       // Check if admin already exists in database
