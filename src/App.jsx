@@ -4,6 +4,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+
 import { AuthProvider } from "./contexts/AuthContext";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
@@ -16,7 +17,7 @@ function App() {
         <div className="min-h-screen flex flex-col bg-gray-50">
           <Routes>
             <Route path="/login" element={<Login />} />
-            {/* Unified Dashboard for both Admin and SubAdmin */}
+
             <Route
               path="/dashboard"
               element={
@@ -25,7 +26,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            {/* Legacy route redirects */}
+
+            {/* Redirect legacy routes */}
             <Route
               path="/subadmin-dashboard"
               element={<Navigate to="/dashboard" replace />}
@@ -50,6 +52,7 @@ function App() {
               path="/dashboard-dairy"
               element={<Navigate to="/dashboard" replace />}
             />
+
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>

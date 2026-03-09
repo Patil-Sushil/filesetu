@@ -20,6 +20,7 @@ import React, {
 } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import ProfileModal from "./ProfileModal";
 
 // Firebase imports
 import {
@@ -1614,6 +1615,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar state
+  const [showProfile, setShowProfile] = useState(false);
+
   const [stats, setStats] = useState({
     totalFiles: 0,
     pendingFiles: 0,
@@ -2129,6 +2132,7 @@ const Dashboard = () => {
           currentUser={currentUser}
           activeTab={activeTab}
           setActiveTab={handleTabChange}
+          openProfile={() => setShowProfile(true)}
           onLogoutClick={() => setLogoutDialogOpen(true)}
         />
       </motion.div>
@@ -2183,6 +2187,15 @@ const Dashboard = () => {
         onCancel={() => setLogoutDialogOpen(false)}
         onConfirm={confirmLogout}
       />
+
+      {showProfile && (
+        <ProfileModal
+          user={currentUser}
+          role={userRole}
+          name={userName}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
     </div>
   );
 };

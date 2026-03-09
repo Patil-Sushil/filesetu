@@ -46,7 +46,7 @@ const Dairy = ({ showToast }) => {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(
-    new Date().toISOString().slice(0, 7)
+    new Date().toISOString().slice(0, 7),
   );
 
   // Report configuration
@@ -110,8 +110,6 @@ const Dairy = ({ showToast }) => {
     const db = getDatabase();
     const dairyRef = dbRef(db, getDatabasePath());
 
-   
-
     const unsubscribe = onValue(
       dairyRef,
       (snapshot) => {
@@ -132,7 +130,7 @@ const Dairy = ({ showToast }) => {
         console.error("❌ Error fetching entries:", err);
         showToast?.error("Failed to load entries");
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -218,7 +216,7 @@ const Dairy = ({ showToast }) => {
     const monthly = getMonthlyEntries();
     const totalDistance = monthly.reduce(
       (sum, e) => sum + (parseFloat(e.distance) || 0),
-      0
+      0,
     );
     return { totalTrips: monthly.length, totalDistance, entries: monthly };
   };
@@ -375,12 +373,12 @@ const Dairy = ({ showToast }) => {
     const timeFrom = formatTimeDisplay(
       formData.timeFromHour,
       formData.timeFromMinute,
-      formData.timeFromPeriod
+      formData.timeFromPeriod,
     );
     const timeTo = formatTimeDisplay(
       formData.timeToHour,
       formData.timeToMinute,
-      formData.timeToPeriod
+      formData.timeToPeriod,
     );
 
     try {
@@ -424,12 +422,12 @@ const Dairy = ({ showToast }) => {
     const timeFrom = formatTimeDisplay(
       formData.timeFromHour,
       formData.timeFromMinute,
-      formData.timeFromPeriod
+      formData.timeFromPeriod,
     );
     const timeTo = formatTimeDisplay(
       formData.timeToHour,
       formData.timeToMinute,
-      formData.timeToPeriod
+      formData.timeToPeriod,
     );
 
     try {
@@ -539,7 +537,7 @@ const Dairy = ({ showToast }) => {
           <div className="dairy-header-left">
             <h2>
               <BookOpen size={24} />
-              Travel Diary 
+              Travel Diary
             </h2>
             <p>Track your travel & print monthly report</p>
           </div>
@@ -786,7 +784,7 @@ const Dairy = ({ showToast }) => {
                           day: "2-digit",
                           month: "short",
                           year: "numeric",
-                        }
+                        },
                       )}
                     </span>
                   </div>
@@ -858,7 +856,10 @@ const Dairy = ({ showToast }) => {
               <form onSubmit={handleAddEntry} className="p-6 space-y-6">
                 {/* Date */}
                 <div>
-                  <label htmlFor="date" className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label
+                    htmlFor="date"
+                    className="block text-sm font-semibold text-gray-700 mb-2"
+                  >
                     Date <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -867,18 +868,23 @@ const Dairy = ({ showToast }) => {
                     type="date"
                     value={formData.date}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 rounded-xl border-2 ${errors.date ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-purple-500'} outline-none transition-colors`}
+                    className={`w-full px-4 py-3 rounded-xl border-2 ${errors.date ? "border-red-300 bg-red-50" : "border-gray-300 focus:border-purple-500"} outline-none transition-colors`}
                     max={new Date().toISOString().split("T")[0]}
                   />
                   {errors.date && (
-                    <span className="text-red-500 text-sm mt-1 block">{errors.date}</span>
+                    <span className="text-red-500 text-sm mt-1 block">
+                      {errors.date}
+                    </span>
                   )}
                 </div>
 
                 {/* From/To */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="travelFrom" className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label
+                      htmlFor="travelFrom"
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                    >
                       Travel From <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -888,15 +894,20 @@ const Dairy = ({ showToast }) => {
                       placeholder="e.g., मुंबई / Mumbai"
                       value={formData.travelFrom}
                       onChange={handleChange}
-                      className={`w-full px-4 py-3 rounded-xl border-2 ${errors.travelFrom ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-purple-500'} outline-none transition-colors`}
+                      className={`w-full px-4 py-3 rounded-xl border-2 ${errors.travelFrom ? "border-red-300 bg-red-50" : "border-gray-300 focus:border-purple-500"} outline-none transition-colors`}
                     />
                     {errors.travelFrom && (
-                      <span className="text-red-500 text-sm mt-1 block">{errors.travelFrom}</span>
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.travelFrom}
+                      </span>
                     )}
                   </div>
 
                   <div>
-                    <label htmlFor="travelTo" className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label
+                      htmlFor="travelTo"
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                    >
                       Travel To <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -906,10 +917,12 @@ const Dairy = ({ showToast }) => {
                       placeholder="e.g., पुणे / Pune"
                       value={formData.travelTo}
                       onChange={handleChange}
-                      className={`w-full px-4 py-3 rounded-xl border-2 ${errors.travelTo ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-purple-500'} outline-none transition-colors`}
+                      className={`w-full px-4 py-3 rounded-xl border-2 ${errors.travelTo ? "border-red-300 bg-red-50" : "border-gray-300 focus:border-purple-500"} outline-none transition-colors`}
                     />
                     {errors.travelTo && (
-                      <span className="text-red-500 text-sm mt-1 block">{errors.travelTo}</span>
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.travelTo}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -925,7 +938,7 @@ const Dairy = ({ showToast }) => {
                         name="timeFromHour"
                         value={formData.timeFromHour}
                         onChange={handleChange}
-                        className={`flex-1 px-3 py-3 rounded-xl border-2 ${errors.timeFrom ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-purple-500'} outline-none transition-colors`}
+                        className={`flex-1 px-3 py-3 rounded-xl border-2 ${errors.timeFrom ? "border-red-300 bg-red-50" : "border-gray-300 focus:border-purple-500"} outline-none transition-colors`}
                       >
                         <option value="">HH</option>
                         {hours.map((h) => (
@@ -939,7 +952,7 @@ const Dairy = ({ showToast }) => {
                         name="timeFromMinute"
                         value={formData.timeFromMinute}
                         onChange={handleChange}
-                        className={`flex-1 px-3 py-3 rounded-xl border-2 ${errors.timeFrom ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-purple-500'} outline-none transition-colors`}
+                        className={`flex-1 px-3 py-3 rounded-xl border-2 ${errors.timeFrom ? "border-red-300 bg-red-50" : "border-gray-300 focus:border-purple-500"} outline-none transition-colors`}
                       >
                         <option value="">MM</option>
                         {minutes.map((m) => (
@@ -959,7 +972,9 @@ const Dairy = ({ showToast }) => {
                       </select>
                     </div>
                     {errors.timeFrom && (
-                      <span className="text-red-500 text-sm mt-1 block">{errors.timeFrom}</span>
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.timeFrom}
+                      </span>
                     )}
                   </div>
 
@@ -972,7 +987,7 @@ const Dairy = ({ showToast }) => {
                         name="timeToHour"
                         value={formData.timeToHour}
                         onChange={handleChange}
-                        className={`flex-1 px-3 py-3 rounded-xl border-2 ${errors.timeTo ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-purple-500'} outline-none transition-colors`}
+                        className={`flex-1 px-3 py-3 rounded-xl border-2 ${errors.timeTo ? "border-red-300 bg-red-50" : "border-gray-300 focus:border-purple-500"} outline-none transition-colors`}
                       >
                         <option value="">HH</option>
                         {hours.map((h) => (
@@ -986,7 +1001,7 @@ const Dairy = ({ showToast }) => {
                         name="timeToMinute"
                         value={formData.timeToMinute}
                         onChange={handleChange}
-                        className={`flex-1 px-3 py-3 rounded-xl border-2 ${errors.timeTo ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-purple-500'} outline-none transition-colors`}
+                        className={`flex-1 px-3 py-3 rounded-xl border-2 ${errors.timeTo ? "border-red-300 bg-red-50" : "border-gray-300 focus:border-purple-500"} outline-none transition-colors`}
                       >
                         <option value="">MM</option>
                         {minutes.map((m) => (
@@ -1006,7 +1021,9 @@ const Dairy = ({ showToast }) => {
                       </select>
                     </div>
                     {errors.timeTo && (
-                      <span className="text-red-500 text-sm mt-1 block">{errors.timeTo}</span>
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.timeTo}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -1014,7 +1031,10 @@ const Dairy = ({ showToast }) => {
                 {/* Distance/Vehicle */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="distance" className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label
+                      htmlFor="distance"
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                    >
                       Distance (km) <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -1026,15 +1046,20 @@ const Dairy = ({ showToast }) => {
                       placeholder="e.g., 150"
                       value={formData.distance}
                       onChange={handleChange}
-                      className={`w-full px-4 py-3 rounded-xl border-2 ${errors.distance ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-purple-500'} outline-none transition-colors`}
+                      className={`w-full px-4 py-3 rounded-xl border-2 ${errors.distance ? "border-red-300 bg-red-50" : "border-gray-300 focus:border-purple-500"} outline-none transition-colors`}
                     />
                     {errors.distance && (
-                      <span className="text-red-500 text-sm mt-1 block">{errors.distance}</span>
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.distance}
+                      </span>
                     )}
                   </div>
 
                   <div>
-                    <label htmlFor="vehicle" className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label
+                      htmlFor="vehicle"
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                    >
                       Vehicle No <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -1044,18 +1069,23 @@ const Dairy = ({ showToast }) => {
                       placeholder="e.g., MH10GF3456"
                       value={formData.vehicle}
                       onChange={handleChange}
-                      className={`w-full px-4 py-3 rounded-xl border-2 ${errors.vehicle ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-purple-500'} outline-none transition-colors`}
+                      className={`w-full px-4 py-3 rounded-xl border-2 ${errors.vehicle ? "border-red-300 bg-red-50" : "border-gray-300 focus:border-purple-500"} outline-none transition-colors`}
                       maxLength="13"
                     />
                     {errors.vehicle && (
-                      <span className="text-red-500 text-sm mt-1 block">{errors.vehicle}</span>
+                      <span className="text-red-500 text-sm mt-1 block">
+                        {errors.vehicle}
+                      </span>
                     )}
                   </div>
                 </div>
 
                 {/* Remark */}
                 <div>
-                  <label htmlFor="remark" className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                  <label
+                    htmlFor="remark"
+                    className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2"
+                  >
                     <MessageSquare size={16} />
                     Remark (शेरा)
                   </label>
@@ -1081,8 +1111,8 @@ const Dairy = ({ showToast }) => {
                   >
                     Cancel
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all"
                   >
                     <Save size={18} />
@@ -1696,7 +1726,8 @@ const Dairy = ({ showToast }) => {
 
                 <div className="sign-section">
                   <div className="sign-name">
-                    ( {reportConfig.employeeName} )&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    ( {reportConfig.employeeName}{" "}
+                    )&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                   </div>
                   <div className="sign-name">{reportConfig.designation},</div>
                   {reportConfig.officeName && (
