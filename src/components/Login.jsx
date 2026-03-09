@@ -79,12 +79,12 @@ const Login = () => {
 
       const users = snapshot.val();
       const userExists = Object.values(users).some(
-        (user) => user.email === emailToSend
+        (user) => user.email === emailToSend,
       );
 
       if (!userExists) {
         setForgotPasswordError(
-          "Email address not found in our system. Please check your email or contact support."
+          "Email address not found in our system. Please check your email or contact support.",
         );
         setLoading(false);
         return;
@@ -94,7 +94,7 @@ const Login = () => {
       setForgotPasswordSuccess(true);
     } catch (error) {
       setForgotPasswordError(
-        "Failed to send password reset email: " + error.message
+        "Failed to send password reset email: " + error.message,
       );
     } finally {
       setLoading(false);

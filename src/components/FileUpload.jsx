@@ -208,7 +208,7 @@ const FileUpload = ({ selectedId }) => {
         try {
           const dbRefInstance = dbRef(database);
           const snapshot = await get(
-            child(dbRefInstance, `data/${selectedId}`)
+            child(dbRefInstance, `data/${selectedId}`),
           );
 
           if (snapshot.exists()) {
@@ -269,7 +269,7 @@ const FileUpload = ({ selectedId }) => {
     if (!allowedTypes.includes(file.type)) {
       showToast(
         `❌ Unsupported file format: ${file.type.split("/")[1].toUpperCase()}`,
-        "error"
+        "error",
       );
       return false;
     }
@@ -373,7 +373,7 @@ const FileUpload = ({ selectedId }) => {
             } catch (error) {
               reject(new Error(`Failed to get download URL: ${error.message}`));
             }
-          }
+          },
         );
       });
     } catch (error) {
